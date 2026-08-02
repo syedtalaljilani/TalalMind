@@ -34,6 +34,18 @@ export type TimelineItemType =
   | 'commute_to_home'
   | 'sleep_force';
 
+// Focus Session History
+export interface FocusSession {
+  id: string;
+  blockType: TimelineItemType;
+  blockTitle: string;
+  date: string;           // YYYY-MM-DD
+  startedAt: string;      // HH:MM
+  allocatedMinutes: number;
+  utilizedSeconds: number; // actual time user ran the timer
+  pomodorosCompleted: number;
+}
+
 export interface TimelineItem {
   id: string;
   title: string;
@@ -49,6 +61,9 @@ export interface TimelineItem {
   isCurrentActive?: boolean;
   isPast?: boolean;
   isPrayerChecked?: boolean;
+  // Focus tracking
+  isFocusable?: boolean;
+  allocatedMinutes?: number;
 }
 
 export interface Lesson {

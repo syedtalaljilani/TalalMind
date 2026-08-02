@@ -4,12 +4,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { StorageService, getTodayDateString } from '../services/storageService';
 import { LocationService } from '../services/locationService';
 import { PrayerService } from '../services/prayerService';
-import { UserSettings, PrayerTimings, TimelineItem, PrayerHistoryState, PrayerName } from '../types';
+import { UserSettings, PrayerTimings, TimelineItem, PrayerHistoryState, PrayerName, FocusSession } from '../types';
 import { generateDailyTimeline, timeToMinutes } from '../utils/timelineUtils';
 import { TimelineCard } from '../components/TimelineCard';
 import { GlassCard } from '../components/GlassCard';
 import { PrayerCheckbookModal } from '../components/PrayerCheckbookModal';
 import { SleepLockOverlay } from '../components/SleepLockOverlay';
+import { FocusTimerModal } from '../components/FocusTimerModal';
+import { FocusHistoryModal } from '../components/FocusHistoryModal';
 import { ALL_LESSONS } from '../data/lessons';
 
 export const TimelineScreen: React.FC = () => {
@@ -25,6 +27,10 @@ export const TimelineScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [currentLessonTitle, setCurrentLessonTitle] = useState<string>('');
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Focus Timer state
+  const [focusBlock, setFocusBlock] = useState<TimelineItem | null>(null);
+  const [focusHistoryVisible, setFocusHistoryVisible] = useState(false);
 
   // Sleep Force Lock State
   const [isSleepLocked, setIsSleepLocked] = useState(false);
@@ -134,12 +140,34 @@ export const TimelineScreen: React.FC = () => {
     }
   };
 
+  const handleStartFocus = (item: TimelineItem) => {
+    setFocusBlock(item);
+  };
+
+  const handleFocusDone = (_session?: FocusSession) => {
+    setFocusBlock(null);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadData(true);
   };
 
   const nextPrayerItem = timelineItems.find((item) => item.isPrayer && !item.isPast);
+  const headerRightActions = (
+    <View style={styles.headerRightActions}>
+      <TouchableOpacity style={styles.historyBtn} onPress={() => setFocusHistoryVisible(true)}>
+        <Ionicons name="bar-chart-outline" size={16} color="#6366F1" />
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.streakBadgeBtn} onPress={() => setModalVisible(true)}>
+        <Ionicons name="flame" size={18} color="#F59E0B" />
+        <Text style={styles.streakBadgeText}>{prayerHistory.currentStreak}d Streak</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.refreshBtn} onPress={() => onRefresh()}>
+        <Ionicons name="refresh" size={18} color="#94A3B8" />
+      </TouchableOpacity>
+    </View>
+  );
   const todayStr = getTodayDateString();
   const todayRecord = prayerHistory.records[todayStr];
   const todayOfferedCount = todayRecord
@@ -157,17 +185,7 @@ export const TimelineScreen: React.FC = () => {
             <Text style={styles.locationText}>{settings?.cityName || 'GPS Location'}</Text>
           </View>
         </View>
-
-        <View style={styles.headerRightActions}>
-          <TouchableOpacity style={styles.streakBadgeBtn} onPress={() => setModalVisible(true)}>
-            <Ionicons name="flame" size={18} color="#F59E0B" />
-            <Text style={styles.streakBadgeText}>{prayerHistory.currentStreak}d Streak</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.refreshBtn} onPress={() => onRefresh()}>
-            <Ionicons name="refresh" size={18} color="#94A3B8" />
-          </TouchableOpacity>
-        </View>
+        {headerRightActions}
       </View>
 
       <ScrollView
@@ -207,6 +225,7 @@ export const TimelineScreen: React.FC = () => {
               key={item.id}
               item={item}
               onTogglePrayerCheck={(pName) => handleTogglePrayerCheck(getTodayDateString(), pName)}
+              onStartFocus={handleStartFocus}
             />
           ))
         )}
@@ -218,6 +237,19 @@ export const TimelineScreen: React.FC = () => {
         onClose={() => setModalVisible(false)}
         prayerHistory={prayerHistory}
         onTogglePrayer={handleTogglePrayerCheck}
+      />
+
+      {/* Focus Timer Modal */}
+      <FocusTimerModal
+        visible={focusBlock !== null}
+        block={focusBlock}
+        onClose={handleFocusDone}
+      />
+
+      {/* Focus Session History Modal */}
+      <FocusHistoryModal
+        visible={focusHistoryVisible}
+        onClose={() => setFocusHistoryVisible(false)}
       />
 
       {/* Strict Sleep Force Full-Screen App Lock */}
@@ -284,6 +316,16 @@ const styles = StyleSheet.create({
     color: '#FBBF24',
     fontSize: 12,
     fontWeight: '700',
+  },
+  historyBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#6366F122',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#6366F144',
   },
   refreshBtn: {
     width: 36,

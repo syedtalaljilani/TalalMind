@@ -71,9 +71,9 @@ export const generateDailyTimeline = (
     }
   });
 
-  // 2. Morning Gym Workout Block (e.g. 06:15 AM - 07:30 AM)
+  // 2. Morning Gym Workout Block
   const gymStartMins = timeToMinutes(settings.gymStart || '06:15');
-  const gymEndMins = gymStartMins + 75; // 75 mins workout & shower
+  const gymEndMins = gymStartMins + 75;
   items.push({
     id: 'morning-gym',
     title: 'Morning Gym & Strength Workout',
@@ -84,6 +84,8 @@ export const generateDailyTimeline = (
     iconName: 'barbell',
     color: '#EF4444',
     badgeText: '🏋️‍♂️ Morning Gym',
+    isFocusable: true,
+    allocatedMinutes: 75,
   });
 
   // 3. Commute & 8-Hour Office Schedule Breakdown
@@ -120,6 +122,8 @@ export const generateDailyTimeline = (
     iconName: 'briefcase',
     color: '#3B82F6',
     badgeText: '🏢 Office (2h)',
+    isFocusable: true,
+    allocatedMinutes: 120,
   });
 
   // Slot 2: Ship-a-thon Hackathon Work (2 Hours: 11:00 AM - 01:00 PM)
@@ -135,6 +139,8 @@ export const generateDailyTimeline = (
     iconName: 'rocket',
     color: '#14B8A6',
     badgeText: '🚀 Hackathon (2h)',
+    isFocusable: true,
+    allocatedMinutes: 120,
   });
 
   // Slot 3: Lunch, Rest & Dhuhr Break (1.5 Hours / 90 Mins: 01:00 PM - 02:30 PM)
@@ -165,6 +171,8 @@ export const generateDailyTimeline = (
     iconName: 'book-open',
     color: '#EC4899',
     badgeText: '📚 Learning (2h)',
+    isFocusable: true,
+    allocatedMinutes: 120,
   });
 
   // Slot 5: Wrap-up & Buffer (30 Mins: 04:30 PM - 05:00 PM)

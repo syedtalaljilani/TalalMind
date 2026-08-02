@@ -8,9 +8,10 @@ import { formatTo12Hour } from '../utils/timelineUtils';
 interface TimelineCardProps {
   item: TimelineItem;
   onTogglePrayerCheck?: (prayerName: PrayerName) => void;
+  onStartFocus?: (item: TimelineItem) => void;
 }
 
-export const TimelineCard: React.FC<TimelineCardProps> = ({ item, onTogglePrayerCheck }) => {
+export const TimelineCard: React.FC<TimelineCardProps> = ({ item, onTogglePrayerCheck, onStartFocus }) => {
   const getIconName = (name: string): keyof typeof Ionicons.glyphMap => {
     switch (name) {
       case 'car':
@@ -101,6 +102,18 @@ export const TimelineCard: React.FC<TimelineCardProps> = ({ item, onTogglePrayer
                   size={24}
                   color={item.isPrayerChecked ? '#10B981' : '#64748B'}
                 />
+              </TouchableOpacity>
+            )}
+
+            {/* Focus Start Button for focusable work blocks */}
+            {item.isFocusable && !item.isPast && (
+              <TouchableOpacity
+                style={[styles.focusBtn, { backgroundColor: item.color + '22', borderColor: item.color + '55' }]}
+                onPress={() => onStartFocus && onStartFocus(item)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="play-circle" size={15} color={item.color} />
+                <Text style={[styles.focusBtnText, { color: item.color }]}>Focus</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -197,5 +210,19 @@ const styles = StyleSheet.create({
   },
   prayerCheckBtnDone: {
     opacity: 1,
+  },
+  focusBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginLeft: 6,
+  },
+  focusBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

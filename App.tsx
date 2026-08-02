@@ -7,6 +7,7 @@ import { TimelineScreen } from './src/screens/TimelineScreen';
 import { LessonsScreen } from './src/screens/LessonsScreen';
 import { ChecklistsScreen } from './src/screens/ChecklistsScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { ProductivityScreen } from './src/screens/ProductivityScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -33,15 +34,15 @@ export default function App() {
             backgroundColor: '#12131C',
             borderTopColor: '#1E2030',
             borderTopWidth: 1,
-            height: 60,
-            paddingBottom: 8,
+            height: 65,
+            paddingBottom: 10,
             paddingTop: 6,
           },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
           tabBarActiveTintColor: '#6366F1',
           tabBarInactiveTintColor: '#64748B',
           tabBarIcon: ({ color, size, focused }) => {
             let iconName: keyof typeof Ionicons.glyphMap = 'time';
-
             if (route.name === 'Timeline') {
               iconName = focused ? 'time' : 'time-outline';
             } else if (route.name === 'Lessons') {
@@ -50,15 +51,17 @@ export default function App() {
               iconName = focused ? 'checkbox' : 'checkbox-outline';
             } else if (route.name === 'Settings') {
               iconName = focused ? 'settings' : 'settings-outline';
+            } else if (route.name === 'Productivity') {
+              iconName = focused ? 'hourglass' : 'hourglass-outline';
             }
-
             return <Ionicons name={iconName} size={size} color={color} />;
           },
         })}
       >
         <Tab.Screen name="Timeline" component={TimelineScreen} options={{ tabBarLabel: 'Timeline' }} />
-        <Tab.Screen name="Lessons" component={LessonsScreen} options={{ tabBarLabel: '503 Lessons' }} />
-        <Tab.Screen name="Checklists" component={ChecklistsScreen} options={{ tabBarLabel: 'Checklists' }} />
+        <Tab.Screen name="Productivity" component={ProductivityScreen} options={{ tabBarLabel: 'Boost' }} />
+        <Tab.Screen name="Lessons" component={LessonsScreen} options={{ tabBarLabel: 'Lessons' }} />
+        <Tab.Screen name="Checklists" component={ChecklistsScreen} options={{ tabBarLabel: 'Tasks' }} />
         <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Settings' }} />
       </Tab.Navigator>
     </NavigationContainer>

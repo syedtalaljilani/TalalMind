@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { UserSettings, PrayerTimings, LessonProgress, DailyChecklistState, PrayerHistoryState, PrayerName, DailyPrayerCheck } from '../types';
+import { UserSettings, PrayerTimings, LessonProgress, DailyChecklistState, PrayerHistoryState, PrayerName, DailyPrayerCheck, FocusSession } from '../types';
 
 const SETTINGS_KEY = '@daily_planner_settings_v1';
 const PRAYER_CACHE_KEY_PREFIX = '@daily_planner_prayer_';
 const LESSON_PROGRESS_KEY = '@daily_planner_lessons_v1';
 const CHECKLIST_KEY = '@daily_planner_checklists_v1';
 const PRAYER_HISTORY_KEY = '@daily_planner_prayer_history_v1';
+const FOCUS_HISTORY_KEY = '@daily_planner_focus_history_v1';
 
 export const DEFAULT_SETTINGS: UserSettings = {
   officeStart: '09:00',
@@ -212,5 +213,25 @@ export const StorageService = {
 
     await StorageService.savePrayerHistory(newState);
     return newState;
+  },
+
+  // Focus Session History
+  async getFocusHistory(): Promise<FocusSession[]> {
+    try {
+      const json = await AsyncStorage.getItem(FOCUS_HISTORY_KEY);
+      return json ? JSON.parse(json) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  async saveFocusSession(session: FocusSession): Promise<void> {
+    try {
+      const existing = await StorageService.getFocusHistory();
+      const updated = [session, ...existing].slice(0, 200); // keep last 200
+      await AsyncStorage.setItem(FOCUS_HISTORY_KEY, JSON.stringify(updated));
+    } catch (e) {
+      console.error('Failed to save focus session', e);
+    }
   },
 };
