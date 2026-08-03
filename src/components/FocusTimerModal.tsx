@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
-import { Video } from "expo-av";
 import { TimelineItem, FocusSession, Achievement } from "../types";
 import { StorageService, getTodayDateString } from "../services/storageService";
 import { AchievementService } from "../services/achievementService";
@@ -224,28 +223,6 @@ export const FocusTimerModal: React.FC<Props> = ({
             </TouchableOpacity>
           </View>
 
-          {block.type === "gym_workout" && block.videoUrl ? (
-            <View style={styles.videoSection}>
-              <Video
-                source={{ uri: block.videoUrl }}
-                style={styles.video}
-                resizeMode="cover"
-                shouldPlay
-                isLooping
-                useNativeControls={false}
-              />
-              <View style={styles.videoOverlay}>
-                <Text style={styles.videoLabel}>
-                  {block.exerciseDay} Workout
-                </Text>
-                <Text style={styles.videoTitle}>{block.exerciseName}</Text>
-                <Text style={styles.videoMeta}>
-                  Sets: {block.exerciseSets} • {block.exerciseReps}
-                </Text>
-              </View>
-            </View>
-          ) : null}
-
           {block.exerciseDescription ? (
             <View style={styles.exerciseDetails}>
               <Text style={styles.detailLabel}>Exercise Plan</Text>
@@ -451,44 +428,6 @@ const styles = StyleSheet.create({
   phaseDot: { width: 10, height: 10, borderRadius: 5 },
   phaseLabel: { color: "#CBD5E1", fontSize: 14, flex: 1 },
   liveLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
-  videoSection: {
-    borderRadius: 18,
-    overflow: "hidden",
-    marginBottom: 16,
-    position: "relative",
-    height: 220,
-    backgroundColor: "#000",
-  },
-  video: {
-    width: "100%",
-    height: "100%",
-  },
-  videoOverlay: {
-    position: "absolute",
-    left: 16,
-    right: 16,
-    bottom: 16,
-    backgroundColor: "rgba(0,0,0,0.35)",
-    borderRadius: 14,
-    padding: 12,
-  },
-  videoLabel: {
-    color: "#F8FAFC",
-    fontSize: 11,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  videoTitle: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "800",
-    marginBottom: 2,
-  },
-  videoMeta: {
-    color: "#CBD5E1",
-    fontSize: 12,
-  },
   exerciseDetails: {
     backgroundColor: "#11121C",
     padding: 12,
