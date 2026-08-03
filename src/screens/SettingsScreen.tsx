@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   StyleSheet,
   Text,
@@ -26,6 +26,16 @@ export const SettingsScreen: React.FC = () => {
   const [gymStart, setGymStart] = useState("06:15");
   const [sleepStart, setSleepStart] = useState("22:30");
   const [saving, setSaving] = useState(false);
+  const [installedApps, setInstalledApps] = useState<
+    {
+      packageName: string;
+      name: string;
+    }[]
+  >([]);
+  const [loadingInstalledApps, setLoadingInstalledApps] = useState(false);
+  const [installedAppsError, setInstalledAppsError] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     Promise.all([
@@ -102,12 +112,15 @@ export const SettingsScreen: React.FC = () => {
         "Permission Ready",
         "Focus mode can now block app distractions.",
       );
-    } else {
-      Alert.alert(
-        "Permission Needed",
-        "Please allow usage/access permissions for app blocking.",
-      );
+      return;
     }
+
+    Alert.alert(
+      "Permission Needed",
+      "Please enable overlay and usage access permissions in the native settings.",
+    );
+    await AppBlockerService.openPermissionSettings();
+    await AppBlockerService.openOverlaySettings();
   };
 
   const handleOpenBlockerSettings = async () => {
@@ -150,6 +163,54 @@ export const SettingsScreen: React.FC = () => {
       "The common social video apps are ready to be blocked during focus.",
     );
   };
+
+  const loadInstalledApps = async () => {
+    if (Platform.OS !== "android") return;
+    setLoadingInstalledApps(true);
+    setInstalledAppsError(null);
+    try {
+      const apps = await AppBlockerService.getInstalledApps();
+      const sorted = apps.sort((a, b) => a.name.localeCompare(b.name));
+      setInstalledApps(sorted.slice(0, 60));
+    } catch (e) {
+      setInstalledAppsError(
+        "Unable to load installed apps. Grant permissions or use a native build.",
+      );
+    } finally {
+      setLoadingInstalledApps(false);
+    }
+  };
+
+  const handleToggleBlockedPackage = async (packageName: string) => {
+    if (!blockerSettings) return;
+    const existing =
+      blockerSettings.androidBlockedPackages.includes(packageName);
+    const next = {
+      ...blockerSettings,
+      androidBlockedPackages: existing
+        ? blockerSettings.androidBlockedPackages.filter(
+            (pkg) => pkg !== packageName,
+          )
+        : [...blockerSettings.androidBlockedPackages, packageName],
+    };
+    await handleBlockerSave(next);
+  };
+
+  const displayAppList = React.useMemo(() => {
+    if (!blockerSettings) return installedApps;
+    const selected = installedApps.filter((app) =>
+      blockerSettings.androidBlockedPackages.includes(app.packageName),
+    );
+    const unselected = installedApps.filter(
+      (app) =>
+        !blockerSettings.androidBlockedPackages.includes(app.packageName),
+    );
+    return [...selected, ...unselected].slice(0, 60);
+  }, [installedApps, blockerSettings]);
+
+  useEffect(() => {
+    loadInstalledApps();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -219,6 +280,56 @@ export const SettingsScreen: React.FC = () => {
               Note: this native blocker works only in a development build or
               production native build, not in Expo Go.
             </Text>
+            <Text style={styles.helpText}>
+              Tap apps below to choose which Android apps should be blocked
+              during focus. Selected apps will be saved immediately.
+            </Text>
+
+            {Platform.OS === "android" && (
+              <View style={styles.appListSection}>
+                <Text style={styles.subSectionLabel}>Installed Apps</Text>
+                {loadingInstalledApps ? (
+                  <Text style={styles.infoSubtext}>
+                    Loading your installed apps...
+                  </Text>
+                ) : installedAppsError ? (
+                  <Text style={styles.infoSubtext}>{installedAppsError}</Text>
+                ) : displayAppList.length === 0 ? (
+                  <Text style={styles.infoSubtext}>
+                    No installed apps found or permissions are missing.
+                  </Text>
+                ) : (
+                  displayAppList.map((app) => {
+                    const selected =
+                      blockerSettings.androidBlockedPackages.includes(
+                        app.packageName,
+                      );
+                    return (
+                      <TouchableOpacity
+                        key={app.packageName}
+                        style={[
+                          styles.appItem,
+                          selected && styles.appItemSelected,
+                        ]}
+                        onPress={() =>
+                          handleToggleBlockedPackage(app.packageName)
+                        }
+                      >
+                        <View>
+                          <Text style={styles.appItemName}>{app.name}</Text>
+                          <Text style={styles.appItemPackage}>
+                            {app.packageName}
+                          </Text>
+                        </View>
+                        <Text style={styles.appItemToggle}>
+                          {selected ? "BLOCK" : "ALLOW"}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })
+                )}
+              </View>
+            )}
 
             <View style={styles.buttonRow}>
               <TouchableOpacity
@@ -504,6 +615,52 @@ const styles = StyleSheet.create({
   syncBtnText: {
     color: "#FFFFFF",
     fontSize: 13,
+    fontWeight: "700",
+  },
+  helpText: {
+    color: "#94A3B8",
+    fontSize: 12,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  appListSection: {
+    marginBottom: 16,
+  },
+  subSectionLabel: {
+    color: "#F8FAFC",
+    fontSize: 14,
+    fontWeight: "700",
+    marginBottom: 8,
+  },
+  appItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#11121C",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#26293D",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 8,
+  },
+  appItemSelected: {
+    borderColor: "#10B981",
+    backgroundColor: "#0F172A",
+  },
+  appItemName: {
+    color: "#F8FAFC",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  appItemPackage: {
+    color: "#94A3B8",
+    fontSize: 11,
+    marginTop: 2,
+  },
+  appItemToggle: {
+    color: "#A78BFA",
+    fontSize: 12,
     fontWeight: "700",
   },
   privacyText: {

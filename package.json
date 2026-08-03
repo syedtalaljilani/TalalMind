@@ -9,6 +9,7 @@
     "@react-navigation/native": "^7.3.14",
     "expo": "~57.0.9",
     "expo-app-blocker": "^0.1.77",
+    "expo-av": "~13.0.0",
     "expo-dev-client": "~57.0.10",
     "expo-linking": "~57.0.4",
     "expo-location": "~57.0.7",

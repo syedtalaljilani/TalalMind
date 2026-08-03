@@ -7,8 +7,11 @@ import {
   TouchableOpacity,
   Animated,
   Easing,
+  Platform,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
+import { Video } from "expo-av";
 import { TimelineItem, FocusSession, Achievement } from "../types";
 import { StorageService, getTodayDateString } from "../services/storageService";
 import { AchievementService } from "../services/achievementService";
@@ -198,7 +201,7 @@ export const FocusTimerModal: React.FC<Props> = ({
       animationType="slide"
       statusBarTranslucent
     >
-      <View style={styles.backdrop}>
+      <SafeAreaView style={styles.backdrop}>
         <View style={[styles.sheet, { borderColor: block.color + "66" }]}>
           <View style={styles.header}>
             <View
@@ -216,9 +219,39 @@ export const FocusTimerModal: React.FC<Props> = ({
               </Text>
             </View>
             <TouchableOpacity onPress={handleFinish} style={styles.closeBtn}>
-              <Text style={styles.closeTxt}>Done</Text>
+              <Ionicons name="close" size={18} color="#F8FAFC" />
+              <Text style={styles.closeTxt}>Close</Text>
             </TouchableOpacity>
           </View>
+
+          {block.type === "gym_workout" && block.videoUrl ? (
+            <View style={styles.videoSection}>
+              <Video
+                source={{ uri: block.videoUrl }}
+                style={styles.video}
+                resizeMode="cover"
+                shouldPlay
+                isLooping
+                useNativeControls={false}
+              />
+              <View style={styles.videoOverlay}>
+                <Text style={styles.videoLabel}>
+                  {block.exerciseDay} Workout
+                </Text>
+                <Text style={styles.videoTitle}>{block.exerciseName}</Text>
+                <Text style={styles.videoMeta}>
+                  Sets: {block.exerciseSets} • {block.exerciseReps}
+                </Text>
+              </View>
+            </View>
+          ) : null}
+
+          {block.exerciseDescription ? (
+            <View style={styles.exerciseDetails}>
+              <Text style={styles.detailLabel}>Exercise Plan</Text>
+              <Text style={styles.detailText}>{block.exerciseDescription}</Text>
+            </View>
+          ) : null}
 
           {appsBlocked && (
             <View style={styles.blockerBanner}>
@@ -347,7 +380,7 @@ export const FocusTimerModal: React.FC<Props> = ({
             </View>
           </View>
         </View>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 };
@@ -365,7 +398,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderBottomWidth: 0,
     padding: 20,
-    paddingBottom: 40,
+    paddingBottom: 30,
+    maxHeight: "92%",
   },
   header: {
     flexDirection: "row",
@@ -383,12 +417,19 @@ const styles = StyleSheet.create({
   blockTitle: { color: "#F8FAFC", fontSize: 16, fontWeight: "700" },
   blockSub: { color: "#64748B", fontSize: 12, marginTop: 2 },
   closeBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     backgroundColor: "#1E2030",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
-  closeTxt: { color: "#F8FAFC", fontWeight: "700" },
+  closeTxt: {
+    color: "#F8FAFC",
+    fontWeight: "700",
+    fontSize: 12,
+  },
   blockerBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -410,6 +451,62 @@ const styles = StyleSheet.create({
   phaseDot: { width: 10, height: 10, borderRadius: 5 },
   phaseLabel: { color: "#CBD5E1", fontSize: 14, flex: 1 },
   liveLabel: { fontSize: 11, fontWeight: "800", letterSpacing: 1 },
+  videoSection: {
+    borderRadius: 18,
+    overflow: "hidden",
+    marginBottom: 16,
+    position: "relative",
+    height: 220,
+    backgroundColor: "#000",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+  },
+  videoOverlay: {
+    position: "absolute",
+    left: 16,
+    right: 16,
+    bottom: 16,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderRadius: 14,
+    padding: 12,
+  },
+  videoLabel: {
+    color: "#F8FAFC",
+    fontSize: 11,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  videoTitle: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "800",
+    marginBottom: 2,
+  },
+  videoMeta: {
+    color: "#CBD5E1",
+    fontSize: 12,
+  },
+  exerciseDetails: {
+    backgroundColor: "#11121C",
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 16,
+  },
+  detailLabel: {
+    color: "#94A3B8",
+    fontSize: 12,
+    marginBottom: 6,
+    textTransform: "uppercase",
+    letterSpacing: 1,
+  },
+  detailText: {
+    color: "#F8FAFC",
+    fontSize: 13,
+    lineHeight: 18,
+  },
   timerRing: { alignItems: "center", marginBottom: 20 },
   ringOuter: {
     width: 160,

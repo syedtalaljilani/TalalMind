@@ -1,4 +1,10 @@
-export type PrayerName = 'Fajr' | 'Sunrise' | 'Dhuhr' | 'Asr' | 'Maghrib' | 'Isha';
+export type PrayerName =
+  | "Fajr"
+  | "Sunrise"
+  | "Dhuhr"
+  | "Asr"
+  | "Maghrib"
+  | "Isha";
 
 export interface PrayerTimings {
   Fajr: string;
@@ -12,35 +18,35 @@ export interface PrayerTimings {
 
 export interface UserSettings {
   officeStart: string; // e.g. "09:00"
-  officeEnd: string;   // e.g. "17:00"
+  officeEnd: string; // e.g. "17:00"
   commuteMinutes: number; // e.g. 50
-  gymStart: string;    // e.g. "06:15"
-  sleepStart: string;  // e.g. "22:30"
+  gymStart: string; // e.g. "06:15"
+  sleepStart: string; // e.g. "22:30"
   cityName: string;
   latitude: number | null;
   longitude: number | null;
   lastUpdated: string;
 }
 
-export type TimelineItemType = 
-  | 'prayer' 
-  | 'gym_workout'
-  | 'commute_to_office' 
-  | 'office_core' 
-  | 'shipathon_block' 
-  | 'lunch_break' 
-  | 'learning_block' 
-  | 'wrapup_buffer' 
-  | 'commute_to_home'
-  | 'sleep_force';
+export type TimelineItemType =
+  | "prayer"
+  | "gym_workout"
+  | "commute_to_office"
+  | "office_core"
+  | "shipathon_block"
+  | "lunch_break"
+  | "learning_block"
+  | "wrapup_buffer"
+  | "commute_to_home"
+  | "sleep_force";
 
 // Focus Session History
 export interface FocusSession {
   id: string;
   blockType: TimelineItemType;
   blockTitle: string;
-  date: string;           // YYYY-MM-DD
-  startedAt: string;      // HH:MM
+  date: string; // YYYY-MM-DD
+  startedAt: string; // HH:MM
   allocatedMinutes: number;
   utilizedSeconds: number; // actual time user ran the timer
   pomodorosCompleted: number;
@@ -51,7 +57,7 @@ export interface TimelineItem {
   title: string;
   subTitle?: string;
   startTime: string; // "HH:MM"
-  endTime?: string;   // "HH:MM"
+  endTime?: string; // "HH:MM"
   type: TimelineItemType;
   iconName: string;
   badgeText?: string;
@@ -61,6 +67,12 @@ export interface TimelineItem {
   isCurrentActive?: boolean;
   isPast?: boolean;
   isPrayerChecked?: boolean;
+  videoUrl?: string;
+  exerciseName?: string;
+  exerciseSets?: number;
+  exerciseReps?: string;
+  exerciseDescription?: string;
+  exerciseDay?: string;
   // Focus tracking
   isFocusable?: boolean;
   allocatedMinutes?: number;
@@ -89,7 +101,7 @@ export interface ChecklistItem {
   id: string;
   title: string;
   completed: boolean;
-  category: 'office' | 'shipathon';
+  category: "office" | "shipathon";
   createdAt: string;
 }
 
@@ -108,7 +120,13 @@ export interface PrayerHistoryState {
 }
 
 // Gamification & Achievements
-export type AchievementCategory = 'gym' | 'office' | 'hackathon' | 'learning' | 'streak' | 'general';
+export type AchievementCategory =
+  | "gym"
+  | "office"
+  | "hackathon"
+  | "learning"
+  | "streak"
+  | "general";
 
 export interface Achievement {
   id: string;
@@ -119,7 +137,13 @@ export interface Achievement {
   category: AchievementCategory;
   xpReward: number;
   requirement: number; // threshold to unlock
-  metric: 'sessions' | 'minutes' | 'pomodoros' | 'streak_days' | 'total_xp' | 'utilization_pct';
+  metric:
+    | "sessions"
+    | "minutes"
+    | "pomodoros"
+    | "streak_days"
+    | "total_xp"
+    | "utilization_pct";
   blockType?: TimelineItemType;
 }
 
