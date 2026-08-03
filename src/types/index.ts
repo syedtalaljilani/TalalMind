@@ -106,3 +106,64 @@ export interface PrayerHistoryState {
   currentStreak: number;
   bestStreak: number;
 }
+
+// Gamification & Achievements
+export type AchievementCategory = 'gym' | 'office' | 'hackathon' | 'learning' | 'streak' | 'general';
+
+export interface Achievement {
+  id: string;
+  title: string;
+  description: string;
+  icon: string;
+  color: string;
+  category: AchievementCategory;
+  xpReward: number;
+  requirement: number; // threshold to unlock
+  metric: 'sessions' | 'minutes' | 'pomodoros' | 'streak_days' | 'total_xp' | 'utilization_pct';
+  blockType?: TimelineItemType;
+}
+
+export interface UnlockedAchievement {
+  achievementId: string;
+  unlockedAt: string; // ISO date
+}
+
+export interface GamificationState {
+  totalXP: number;
+  level: number;
+  unlockedAchievements: UnlockedAchievement[];
+  categoryStats: Record<string, CategoryStats>;
+  dailyStreak: number;
+  bestDailyStreak: number;
+  lastActiveDate: string | null;
+}
+
+export interface CategoryStats {
+  totalSessions: number;
+  totalMinutes: number;
+  totalPomodoros: number;
+  bestUtilizationPct: number;
+}
+
+export interface HabitState {
+  id: string;
+  name: string;
+  icon: string;
+  streak: number;
+  completedToday: boolean;
+  lastCompletedDate: string | null;
+}
+
+export interface ProductivityState {
+  date: string;
+  habits: HabitState[];
+  pomodoroCount: number;
+  quickTasks: { id: string; title: string; done: boolean }[];
+}
+
+export interface AppBlockerSettings {
+  enabled: boolean;
+  blockDuringFocus: boolean;
+  iosSelectionData: string;
+  androidBlockedPackages: string[];
+}

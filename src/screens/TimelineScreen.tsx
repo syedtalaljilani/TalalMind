@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { StorageService, getTodayDateString } from '../services/storageService';
 import { LocationService } from '../services/locationService';
 import { PrayerService } from '../services/prayerService';
-import { UserSettings, PrayerTimings, TimelineItem, PrayerHistoryState, PrayerName, FocusSession } from '../types';
+import { UserSettings, PrayerTimings, TimelineItem, PrayerHistoryState, PrayerName, FocusSession, Achievement, GamificationState } from '../types';
 import { generateDailyTimeline, timeToMinutes } from '../utils/timelineUtils';
 import { TimelineCard } from '../components/TimelineCard';
 import { GlassCard } from '../components/GlassCard';
@@ -12,6 +12,8 @@ import { PrayerCheckbookModal } from '../components/PrayerCheckbookModal';
 import { SleepLockOverlay } from '../components/SleepLockOverlay';
 import { FocusTimerModal } from '../components/FocusTimerModal';
 import { FocusHistoryModal } from '../components/FocusHistoryModal';
+import { BadgeUnlockToast } from '../components/BadgeUnlockToast';
+import { getXPForNextLevel } from '../data/achievements';
 import { ALL_LESSONS } from '../data/lessons';
 
 export const TimelineScreen: React.FC = () => {
@@ -31,6 +33,9 @@ export const TimelineScreen: React.FC = () => {
   // Focus Timer state
   const [focusBlock, setFocusBlock] = useState<TimelineItem | null>(null);
   const [focusHistoryVisible, setFocusHistoryVisible] = useState(false);
+  const [gamification, setGamification] = useState<GamificationState | null>(null);
+  const [toastBadge, setToastBadge] = useState<Achievement | null>(null);
+  const [toastXP, setToastXP] = useState(0);
 
   // Sleep Force Lock State
   const [isSleepLocked, setIsSleepLocked] = useState(false);
@@ -96,6 +101,9 @@ export const TimelineScreen: React.FC = () => {
       const history = await StorageService.getPrayerHistory();
       setPrayerHistory(history);
 
+      const gam = await StorageService.getGamification();
+      setGamification(gam);
+
       // Fetch active lesson title
       const lessonProgress = await StorageService.getLessonProgress();
       const currentLessonId = (lessonProgress.completedIds.length || 0) + 1;
@@ -144,8 +152,14 @@ export const TimelineScreen: React.FC = () => {
     setFocusBlock(item);
   };
 
-  const handleFocusDone = (_session?: FocusSession) => {
+  const handleFocusDone = async (_session?: FocusSession, newBadges?: Achievement[], xpEarned?: number) => {
     setFocusBlock(null);
+    if (xpEarned) setToastXP(xpEarned);
+    if (newBadges && newBadges.length > 0) {
+      setToastBadge(newBadges[0]);
+    }
+    const gam = await StorageService.getGamification();
+    setGamification(gam);
   };
 
   const onRefresh = () => {
@@ -156,6 +170,11 @@ export const TimelineScreen: React.FC = () => {
   const nextPrayerItem = timelineItems.find((item) => item.isPrayer && !item.isPast);
   const headerRightActions = (
     <View style={styles.headerRightActions}>
+      {gamification && (
+        <View style={styles.levelChip}>
+          <Text style={styles.levelChipText}>Lv.{gamification.level}</Text>
+        </View>
+      )}
       <TouchableOpacity style={styles.historyBtn} onPress={() => setFocusHistoryVisible(true)}>
         <Ionicons name="bar-chart-outline" size={16} color="#6366F1" />
       </TouchableOpacity>
@@ -192,6 +211,26 @@ export const TimelineScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#6366F1" />}
       >
+        {/* XP Progress Card */}
+        {gamification && (
+          <GlassCard accentColor="#6366F1" style={styles.xpCard}>
+            <View style={styles.xpRow}>
+              <View style={styles.xpLevelBadge}>
+                <Text style={styles.xpLevelNum}>{gamification.level}</Text>
+              </View>
+              <View style={styles.xpDetails}>
+                <Text style={styles.xpTitle}>{gamification.totalXP} XP • {gamification.dailyStreak}d streak 🔥</Text>
+                <View style={styles.xpBarBg}>
+                  <View style={[styles.xpBarFill, { width: `${getXPForNextLevel(gamification.totalXP).progress}%` as `${number}%` }]} />
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setFocusHistoryVisible(true)}>
+                <Ionicons name="chevron-forward" size={18} color="#6366F1" />
+              </TouchableOpacity>
+            </View>
+          </GlassCard>
+        )}
+
         {/* Next Prayer & Daily Checkbook Quick Card */}
         <GlassCard active accentColor="#F59E0B" style={styles.highlightCard}>
           <View style={styles.highlightContent}>
@@ -252,6 +291,13 @@ export const TimelineScreen: React.FC = () => {
         onClose={() => setFocusHistoryVisible(false)}
       />
 
+      {/* Badge Unlock Toast */}
+      <BadgeUnlockToast
+        badge={toastBadge}
+        xpEarned={toastXP}
+        onDismiss={() => { setToastBadge(null); setToastXP(0); }}
+      />
+
       {/* Strict Sleep Force Full-Screen App Lock */}
       <SleepLockOverlay
         visible={isSleepLocked && !emergencyUnlocked}
@@ -301,6 +347,30 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  levelChip: {
+    backgroundColor: '#6366F122',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#6366F144',
+  },
+  levelChipText: {
+    color: '#6366F1',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  xpCard: { marginBottom: 12 },
+  xpRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  xpLevelBadge: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#6366F122',
+    borderWidth: 1, borderColor: '#6366F1', justifyContent: 'center', alignItems: 'center',
+  },
+  xpLevelNum: { color: '#6366F1', fontSize: 14, fontWeight: '800' },
+  xpDetails: { flex: 1 },
+  xpTitle: { color: '#CBD5E1', fontSize: 12, fontWeight: '600', marginBottom: 4 },
+  xpBarBg: { height: 4, backgroundColor: '#1E2030', borderRadius: 2, overflow: 'hidden' },
+  xpBarFill: { height: 4, backgroundColor: '#6366F1', borderRadius: 2 },
   streakBadgeBtn: {
     flexDirection: 'row',
     alignItems: 'center',
