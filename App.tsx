@@ -1,78 +1,233 @@
-import React, { useEffect } from 'react';
-import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
-import { TimelineScreen } from './src/screens/TimelineScreen';
-import { LessonsScreen } from './src/screens/LessonsScreen';
-import { ChecklistsScreen } from './src/screens/ChecklistsScreen';
-import { SettingsScreen } from './src/screens/SettingsScreen';
-import { ProductivityScreen } from './src/screens/ProductivityScreen';
-import { AchievementsScreen } from './src/screens/AchievementsScreen';
-import { AppBlockerService } from './src/services/appBlockerService';
+import React, { useEffect, useState } from "react";
+import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  SafeAreaProvider,
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
+import { Ionicons } from "@expo/vector-icons";
+import { TimelineScreen } from "./src/screens/TimelineScreen";
+import { LessonsScreen } from "./src/screens/LessonsScreen";
+import { ChecklistsScreen } from "./src/screens/ChecklistsScreen";
+import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { ProductivityScreen } from "./src/screens/ProductivityScreen";
+import { AchievementsScreen } from "./src/screens/AchievementsScreen";
+import { FocusShieldScreen } from "./src/screens/FocusShieldScreen";
+import { StorageService, getTodayDateString } from "./src/services/storageService";
+import { AutoBlockService } from "./src/services/autoBlockService";
+import { NotificationService } from "./src/services/notificationService";
 
-const Tab = createBottomTabNavigator();
+type IconName = keyof typeof Ionicons.glyphMap;
 
-const customDarkTheme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    background: '#090A0F',
-    card: '#12131C',
-    text: '#F8FAFC',
-    border: '#1E2030',
-    primary: '#6366F1',
-  },
+type ScreenEntry = {
+  key: string;
+  label: string;
+  icon: IconName;
+  activeIcon: IconName;
+  component: React.ComponentType;
 };
 
-export default function App() {
-  useEffect(() => {
-    AppBlockerService.init();
-  }, []);
+const screens: ScreenEntry[] = [
+  {
+    key: "Timeline",
+    label: "Home",
+    icon: "time-outline" as IconName,
+    activeIcon: "time" as IconName,
+    component: TimelineScreen,
+  },
+  {
+    key: "Productivity",
+    label: "Boost",
+    icon: "hourglass-outline" as IconName,
+    activeIcon: "hourglass" as IconName,
+    component: ProductivityScreen,
+  },
+  {
+    key: "Achievements",
+    label: "Badges",
+    icon: "trophy-outline" as IconName,
+    activeIcon: "trophy" as IconName,
+    component: AchievementsScreen,
+  },
+  {
+    key: "Lessons",
+    label: "Learn",
+    icon: "book-outline" as IconName,
+    activeIcon: "book" as IconName,
+    component: LessonsScreen,
+  },
+  {
+    key: "Checklists",
+    label: "Tasks",
+    icon: "checkbox-outline" as IconName,
+    activeIcon: "checkbox" as IconName,
+    component: ChecklistsScreen,
+  },
+  {
+    key: "Settings",
+    label: "Settings",
+    icon: "settings-outline" as IconName,
+    activeIcon: "settings" as IconName,
+    component: SettingsScreen,
+  },
+];
+
+function BottomTabBar({
+  screens,
+  activeScreen,
+  onSelect,
+}: {
+  screens: ScreenEntry[];
+  activeScreen: string;
+  onSelect: (key: string) => void;
+}) {
+  const insets = useSafeAreaInsets();
 
   return (
-    <NavigationContainer theme={customDarkTheme}>
-      <StatusBar style="light" />
-      <Tab.Navigator
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarStyle: {
-            backgroundColor: '#12131C',
-            borderTopColor: '#1E2030',
-            borderTopWidth: 1,
-            height: 65,
-            paddingBottom: 10,
-            paddingTop: 6,
-          },
-          tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
-          tabBarActiveTintColor: '#6366F1',
-          tabBarInactiveTintColor: '#64748B',
-          tabBarIcon: ({ color, size, focused }) => {
-            let iconName: keyof typeof Ionicons.glyphMap = 'time';
-            if (route.name === 'Timeline') {
-              iconName = focused ? 'time' : 'time-outline';
-            } else if (route.name === 'Lessons') {
-              iconName = focused ? 'book' : 'book-outline';
-            } else if (route.name === 'Checklists') {
-              iconName = focused ? 'checkbox' : 'checkbox-outline';
-            } else if (route.name === 'Settings') {
-              iconName = focused ? 'settings' : 'settings-outline';
-            } else if (route.name === 'Productivity') {
-              iconName = focused ? 'hourglass' : 'hourglass-outline';
-            } else if (route.name === 'Achievements') {
-              iconName = focused ? 'trophy' : 'trophy-outline';
-            }
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
+    <View
+      style={[
+        styles.tabBarContainer,
+        { paddingBottom: Math.max(insets.bottom, 12) },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View style={styles.tabBar}>
+        {screens.map((screen) => {
+          const selected = screen.key === activeScreen;
+          return (
+            <TouchableOpacity
+              key={screen.key}
+              onPress={() => onSelect(screen.key)}
+              style={styles.tabItem}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.tabIconWrap,
+                  selected && styles.tabIconWrapActive,
+                ]}
+              >
+                <Ionicons
+                  name={selected ? screen.activeIcon : screen.icon}
+                  size={22}
+                  color={selected ? "#F8FAFC" : "#64748B"}
+                />
+              </View>
+              <Text
+                style={[styles.tabLabel, selected && styles.tabLabelActive]}
+              >
+                {screen.label}
+              </Text>
+            </TouchableOpacity>
+          );
         })}
-      >
-        <Tab.Screen name="Timeline" component={TimelineScreen} options={{ tabBarLabel: 'Timeline' }} />
-        <Tab.Screen name="Productivity" component={ProductivityScreen} options={{ tabBarLabel: 'Boost' }} />
-        <Tab.Screen name="Achievements" component={AchievementsScreen} options={{ tabBarLabel: 'Badges' }} />
-        <Tab.Screen name="Lessons" component={LessonsScreen} options={{ tabBarLabel: 'Lessons' }} />
-        <Tab.Screen name="Checklists" component={ChecklistsScreen} options={{ tabBarLabel: 'Tasks' }} />
-        <Tab.Screen name="Settings" component={SettingsScreen} options={{ tabBarLabel: 'Settings' }} />
-      </Tab.Navigator>
-    </NavigationContainer>
+      </View>
+    </View>
   );
 }
+
+export default function App() {
+  const [activeScreen, setActiveScreen] = useState("Timeline");
+  const [shieldOpen, setShieldOpen] = useState(false);
+
+  useEffect(() => {
+    StorageService.init();
+    AutoBlockService.start();
+    void (async () => {
+      await NotificationService.ensurePermissions();
+      const [settings, timings] = await Promise.all([
+        StorageService.getSettings(),
+        StorageService.getCachedPrayerTimes(getTodayDateString()),
+      ]);
+      await NotificationService.reschedule(timings ?? undefined, settings);
+    })();
+  }, []);
+
+  const activeScreenObj = screens.find((screen) => screen.key === activeScreen);
+  const ActiveComponent = activeScreenObj?.component || TimelineScreen;
+
+  return (
+    <SafeAreaProvider>
+      <SafeAreaView style={styles.appContainer} edges={["top", "left", "right"]}>
+        <StatusBar style="light" />
+        <View style={styles.contentArea}>
+          {activeScreen === "Settings" ? (
+            <SettingsScreen onOpenShield={() => setShieldOpen(true)} />
+          ) : (
+            <ActiveComponent />
+          )}
+        </View>
+        <BottomTabBar
+          screens={screens}
+          activeScreen={activeScreen}
+          onSelect={setActiveScreen}
+        />
+      </SafeAreaView>
+      <Modal
+        visible={shieldOpen}
+        animationType="slide"
+        presentationStyle="fullScreen"
+        onRequestClose={() => setShieldOpen(false)}
+      >
+        <FocusShieldScreen onClose={() => setShieldOpen(false)} />
+      </Modal>
+    </SafeAreaProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  appContainer: {
+    flex: 1,
+    backgroundColor: "#090A0F",
+  },
+  contentArea: {
+    flex: 1,
+    backgroundColor: "#090A0F",
+  },
+  tabBarContainer: {
+    paddingTop: 8,
+    paddingHorizontal: 16,
+    backgroundColor: "transparent",
+  },
+  tabBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0F1424",
+    borderRadius: 28,
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    shadowColor: "#000",
+    shadowOpacity: 0.35,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 3,
+    paddingVertical: 4,
+  },
+  tabIconWrap: {
+    width: 40,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIconWrapActive: {
+    backgroundColor: "rgba(99, 102, 241, 0.28)",
+  },
+  tabLabel: {
+    color: "#64748B",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  tabLabelActive: {
+    color: "#F8FAFC",
+  },
+});

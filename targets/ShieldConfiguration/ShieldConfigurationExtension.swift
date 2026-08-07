@@ -7,9 +7,9 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   private let appGroupIdentifier = "group.com.talalmind.blocker"
 
   // All values below are replaced by the config plugin at prebuild time
-  private let shieldTitle = "Focus Mode Active!"
-  private let shieldSubtitle = "{appName} is blocked during your focus session."
-  private let shieldPrimaryButtonLabel = "Back to TalalMind"
+  private let shieldTitle = "Stay Focused"
+  private let shieldSubtitle = "{appName} is blocked during focus time."
+  private let shieldPrimaryButtonLabel = "Back to Focus"
   private let shieldSecondaryButtonLabel = "Not now"
   // Temporary-unlock state copy — shown briefly while ManagedSettings clears
   // after a successful unlock. Configurable via plugin options.
@@ -17,10 +17,10 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
   private let shieldTempUnlockSubtitle = "Your free time is loading. Try again in a moment."
   private let shieldTempUnlockButtonLabel = "OK"
   private let shieldPrimaryButtonColor = UIColor(red: 0.388, green: 0.400, blue: 0.945, alpha: 1.0)
-  private let shieldBackgroundColor: UIColor? = UIColor(red: 0.035, green: 0.039, blue: 0.059, alpha: 1.0)
-  private let shieldBlurStyle: UIBlurEffect.Style? = .systemThickMaterialDark
-  private let shieldTitleColor = UIColor(red: 0.067, green: 0.067, blue: 0.067, alpha: 1.0)
-  private let shieldSubtitleColor = UIColor(red: 0.451, green: 0.451, blue: 0.451, alpha: 1.0)
+  private let shieldBackgroundColor: UIColor? = UIColor(red: 0.059, green: 0.078, blue: 0.141, alpha: 1.0)
+  private let shieldBlurStyle: UIBlurEffect.Style? = nil
+  private let shieldTitleColor = UIColor(red: 0.973, green: 0.980, blue: 0.988, alpha: 1.0)
+  private let shieldSubtitleColor = UIColor(red: 0.580, green: 0.639, blue: 0.722, alpha: 1.0)
 
   private var mascotIcon: UIImage? {
     let bundle = Bundle(for: type(of: self))

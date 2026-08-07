@@ -10,16 +10,18 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { StorageService } from "../services/storageService";
+import { StorageService, getTodayDateString } from "../services/storageService";
 import { LocationService } from "../services/locationService";
-import { AppBlockerSettings, UserSettings } from "../types";
+import { NotificationService } from "../services/notificationService";
+import { UserSettings } from "../types";
 import { GlassCard } from "../components/GlassCard";
-import { AppBlockerService } from "../services/appBlockerService";
 
-export const SettingsScreen: React.FC = () => {
+interface Props {
+  onOpenShield?: () => void;
+}
+
+export const SettingsScreen: React.FC<Props> = ({ onOpenShield }) => {
   const [settings, setSettings] = useState<UserSettings | null>(null);
-  const [blockerSettings, setBlockerSettings] =
-    useState<AppBlockerSettings | null>(null);
   const [officeStart, setOfficeStart] = useState("09:00");
   const [officeEnd, setOfficeEnd] = useState("17:00");
   const [commuteMinutes, setCommuteMinutes] = useState("50");
@@ -38,12 +40,8 @@ export const SettingsScreen: React.FC = () => {
   );
 
   useEffect(() => {
-    Promise.all([
-      StorageService.getSettings(),
-      StorageService.getAppBlockerSettings(),
-    ]).then(([s, blocker]) => {
+    StorageService.getSettings().then((s) => {
       setSettings(s);
-      setBlockerSettings(blocker);
       setOfficeStart(s.officeStart);
       setOfficeEnd(s.officeEnd);
       setCommuteMinutes(String(s.commuteMinutes));
@@ -69,6 +67,12 @@ export const SettingsScreen: React.FC = () => {
     await StorageService.saveSettings(updated);
     setSettings(updated);
     setSaving(false);
+
+    const cachedTimings = await StorageService.getCachedPrayerTimes(
+      getTodayDateString(),
+    );
+    await NotificationService.reschedule(cachedTimings ?? undefined, updated);
+
     Alert.alert(
       "Settings Saved",
       "Your schedule, gym workout & Sleep Force timings have been updated.",
@@ -100,118 +104,6 @@ export const SettingsScreen: React.FC = () => {
     }
   };
 
-  const handleBlockerSave = async (next: AppBlockerSettings) => {
-    setBlockerSettings(next);
-    await StorageService.saveAppBlockerSettings(next);
-  };
-
-  const handlePermissionsRequest = async () => {
-    const granted = await AppBlockerService.requestPermissions();
-    if (granted) {
-      Alert.alert(
-        "Permission Ready",
-        "Focus mode can now block app distractions.",
-      );
-      return;
-    }
-
-    Alert.alert(
-      "Permission Needed",
-      "Please enable overlay and usage access permissions in the native settings.",
-    );
-    await AppBlockerService.openPermissionSettings();
-    await AppBlockerService.openOverlaySettings();
-  };
-
-  const handleOpenBlockerSettings = async () => {
-    await AppBlockerService.openPermissionSettings();
-    await AppBlockerService.openOverlaySettings();
-  };
-
-  const handleToggleBlocker = async (enabled: boolean) => {
-    if (!blockerSettings) return;
-    const next = { ...blockerSettings, enabled };
-    await handleBlockerSave(next);
-    if (!enabled) {
-      await AppBlockerService.deactivateBlocking();
-    }
-  };
-
-  const handleToggleBlockDuringFocus = async (blockDuringFocus: boolean) => {
-    if (!blockerSettings) return;
-    const next = { ...blockerSettings, blockDuringFocus };
-    await handleBlockerSave(next);
-  };
-
-  const handleApplyDefaultApps = async () => {
-    if (!blockerSettings) return;
-    const defaults = [
-      "com.instagram.android",
-      "com.google.android.youtube",
-      "com.facebook.katana",
-      "com.snapchat.android",
-      "com.disney.disneyplus",
-      "com.netflix.mediaclient",
-      "com.twitter.android",
-      "com.reddit.frontpage",
-      "com.whatsapp",
-    ];
-    const next = { ...blockerSettings, androidBlockedPackages: defaults };
-    await handleBlockerSave(next);
-    Alert.alert(
-      "Default distraction list saved",
-      "The common social video apps are ready to be blocked during focus.",
-    );
-  };
-
-  const loadInstalledApps = async () => {
-    if (Platform.OS !== "android") return;
-    setLoadingInstalledApps(true);
-    setInstalledAppsError(null);
-    try {
-      const apps = await AppBlockerService.getInstalledApps();
-      const sorted = apps.sort((a, b) => a.name.localeCompare(b.name));
-      setInstalledApps(sorted.slice(0, 60));
-    } catch (e) {
-      setInstalledAppsError(
-        "Unable to load installed apps. Grant permissions or use a native build.",
-      );
-    } finally {
-      setLoadingInstalledApps(false);
-    }
-  };
-
-  const handleToggleBlockedPackage = async (packageName: string) => {
-    if (!blockerSettings) return;
-    const existing =
-      blockerSettings.androidBlockedPackages.includes(packageName);
-    const next = {
-      ...blockerSettings,
-      androidBlockedPackages: existing
-        ? blockerSettings.androidBlockedPackages.filter(
-            (pkg) => pkg !== packageName,
-          )
-        : [...blockerSettings.androidBlockedPackages, packageName],
-    };
-    await handleBlockerSave(next);
-  };
-
-  const displayAppList = React.useMemo(() => {
-    if (!blockerSettings) return installedApps;
-    const selected = installedApps.filter((app) =>
-      blockerSettings.androidBlockedPackages.includes(app.packageName),
-    );
-    const unselected = installedApps.filter(
-      (app) =>
-        !blockerSettings.androidBlockedPackages.includes(app.packageName),
-    );
-    return [...selected, ...unselected].slice(0, 60);
-  }, [installedApps, blockerSettings]);
-
-  useEffect(() => {
-    loadInstalledApps();
-  }, []);
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -223,142 +115,25 @@ export const SettingsScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* Focus App Blocker */}
-        {blockerSettings && (
-          <GlassCard accentColor="#8B5CF6" style={{ marginTop: 12 }}>
-            <View style={styles.cardHeader}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={20}
-                color="#8B5CF6"
-              />
-              <Text style={styles.cardTitle}>Focus App Blocker</Text>
-            </View>
-
-            <View style={styles.toggleRow}>
-              <Text style={styles.label}>Enable app blocker</Text>
-              <TouchableOpacity
-                style={[
-                  styles.toggleBtn,
-                  blockerSettings.enabled && styles.toggleBtnActive,
-                ]}
-                onPress={() => handleToggleBlocker(!blockerSettings.enabled)}
-              >
-                <Text style={styles.toggleBtnText}>
-                  {blockerSettings.enabled ? "ON" : "OFF"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.toggleRow}>
-              <Text style={styles.label}>Block apps during focus sessions</Text>
-              <TouchableOpacity
-                style={[
-                  styles.toggleBtn,
-                  blockerSettings.blockDuringFocus && styles.toggleBtnActive,
-                ]}
-                onPress={() =>
-                  handleToggleBlockDuringFocus(
-                    !blockerSettings.blockDuringFocus,
-                  )
-                }
-              >
-                <Text style={styles.toggleBtnText}>
-                  {blockerSettings.blockDuringFocus ? "ON" : "OFF"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.infoText}>
-              Detected packages: {blockerSettings.androidBlockedPackages.length}
-            </Text>
-            <Text style={styles.infoSubtext}>
-              Platform: {Platform.OS === "android" ? "Android" : "iOS"} • Expo
-              app blocker integration enabled
-            </Text>
-            <Text style={styles.infoSubtext}>
-              Note: this native blocker works only in a development build or
-              production native build, not in Expo Go.
-            </Text>
-            <Text style={styles.helpText}>
-              Tap apps below to choose which Android apps should be blocked
-              during focus. Selected apps will be saved immediately.
-            </Text>
-
-            {Platform.OS === "android" && (
-              <View style={styles.appListSection}>
-                <Text style={styles.subSectionLabel}>Installed Apps</Text>
-                {loadingInstalledApps ? (
-                  <Text style={styles.infoSubtext}>
-                    Loading your installed apps...
-                  </Text>
-                ) : installedAppsError ? (
-                  <Text style={styles.infoSubtext}>{installedAppsError}</Text>
-                ) : displayAppList.length === 0 ? (
-                  <Text style={styles.infoSubtext}>
-                    No installed apps found or permissions are missing.
-                  </Text>
-                ) : (
-                  displayAppList.map((app) => {
-                    const selected =
-                      blockerSettings.androidBlockedPackages.includes(
-                        app.packageName,
-                      );
-                    return (
-                      <TouchableOpacity
-                        key={app.packageName}
-                        style={[
-                          styles.appItem,
-                          selected && styles.appItemSelected,
-                        ]}
-                        onPress={() =>
-                          handleToggleBlockedPackage(app.packageName)
-                        }
-                      >
-                        <View>
-                          <Text style={styles.appItemName}>{app.name}</Text>
-                          <Text style={styles.appItemPackage}>
-                            {app.packageName}
-                          </Text>
-                        </View>
-                        <Text style={styles.appItemToggle}>
-                          {selected ? "BLOCK" : "ALLOW"}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })
-                )}
-              </View>
-            )}
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={styles.syncBtn}
-                onPress={handlePermissionsRequest}
-              >
-                <Ionicons name="lock-closed-outline" size={16} color="#FFF" />
-                <Text style={styles.syncBtnText}>Grant Permissions</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.syncBtnSecondary}
-                onPress={handleOpenBlockerSettings}
-              >
-                <Ionicons name="settings-outline" size={16} color="#FFF" />
-                <Text style={styles.syncBtnText}>Open Settings</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity
-              style={styles.syncBtnSecondary}
-              onPress={handleApplyDefaultApps}
-            >
-              <Ionicons name="apps-outline" size={16} color="#FFF" />
-              <Text style={styles.syncBtnText}>
-                Use Default Distraction Apps
-              </Text>
-            </TouchableOpacity>
-          </GlassCard>
-        )}
+        {/* Focus Shield */}
+        <GlassCard accentColor="#38BDF8" style={{ marginTop: 12 }}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="shield-outline" size={20} color="#38BDF8" />
+            <Text style={styles.cardTitle}>Focus Shield</Text>
+          </View>
+          <Text style={styles.shieldText}>
+            Block distracting apps while your focus timer is running. Pick which
+            apps (Instagram, YouTube, TikTok, etc.) to lock during focus
+            sessions.
+          </Text>
+          <TouchableOpacity
+            style={styles.shieldBtn}
+            onPress={onOpenShield}
+          >
+            <Ionicons name="shield-checkmark-outline" size={16} color="#FFF" />
+            <Text style={styles.shieldBtnText}>Manage Blocked Apps</Text>
+          </TouchableOpacity>
+        </GlassCard>
 
         {/* Office & Routine Schedule */}
         <GlassCard accentColor="#3B82F6" style={{ marginTop: 12 }}>
@@ -472,7 +247,7 @@ export const SettingsScreen: React.FC = () => {
           </TouchableOpacity>
         </GlassCard>
 
-        {/* Offline & Privacy Banner */}
+        {/* Sync & Privacy Banner */}
         <GlassCard accentColor="#8B5CF6" style={{ marginTop: 12 }}>
           <View style={styles.cardHeader}>
             <Ionicons
@@ -480,12 +255,13 @@ export const SettingsScreen: React.FC = () => {
               size={20}
               color="#8B5CF6"
             />
-            <Text style={styles.cardTitle}>100% Offline & Private</Text>
+            <Text style={styles.cardTitle}>Synced to Cloud</Text>
           </View>
           <Text style={styles.privacyText}>
-            All daily planner data, prayer caches, 503 lesson progress, and task
-            checklists are stored directly on your phone via local AsyncStorage.
-            No cloud accounts, tracking, or external server dependencies.
+            Daily planner data, prayer caches, lesson progress, and task
+            checklists sync to your private Supabase project under an anonymous
+            profile. A local copy is kept on your phone so the app still works
+            offline.
           </Text>
         </GlassCard>
       </ScrollView>
@@ -667,6 +443,26 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     fontSize: 13,
     lineHeight: 18,
+  },
+  shieldText: {
+    color: "#94A3B8",
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  shieldBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#38BDF8",
+    borderRadius: 10,
+    paddingVertical: 12,
+    gap: 8,
+  },
+  shieldBtnText: {
+    color: "#0B1524",
+    fontSize: 14,
+    fontWeight: "800",
   },
   buttonRow: {
     flexDirection: "row",

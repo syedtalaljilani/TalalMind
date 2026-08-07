@@ -8,6 +8,7 @@ interface LessonCardProps {
   lesson: Lesson;
   progress: LessonProgress;
   totalLessons: number;
+  index: number;
   onToggleComplete: (id: number) => void;
   onNextLesson: () => void;
   onPrevLesson: () => void;
@@ -17,12 +18,15 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   lesson,
   progress,
   totalLessons,
+  index,
   onToggleComplete,
   onNextLesson,
   onPrevLesson,
 }) => {
   const isCompleted = progress.completedIds.includes(lesson.id);
   const percentage = Math.round((progress.completedIds.length / totalLessons) * 100);
+  const isFirst = index === 0;
+  const isLast = index === totalLessons - 1;
 
   return (
     <GlassCard active={!isCompleted} accentColor="#EC4899">
@@ -53,7 +57,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
       {/* Lesson Title & Details */}
       <View style={styles.body}>
         <Text style={styles.lessonNumber}>
-          Lesson {lesson.id} of {totalLessons}
+          Lesson {index + 1} of {totalLessons}
         </Text>
         <Text style={styles.lessonTitle}>{lesson.title}</Text>
         <Text style={styles.lessonDescription}>{lesson.description}</Text>
@@ -71,8 +75,8 @@ export const LessonCard: React.FC<LessonCardProps> = ({
 
       {/* Actions */}
       <View style={styles.actionsRow}>
-        <TouchableOpacity style={styles.navBtn} onPress={onPrevLesson} disabled={lesson.id === 1}>
-          <Ionicons name="chevron-back" size={20} color={lesson.id === 1 ? '#475569' : '#94A3B8'} />
+        <TouchableOpacity style={styles.navBtn} onPress={onPrevLesson} disabled={isFirst}>
+          <Ionicons name="chevron-back" size={20} color={isFirst ? '#475569' : '#94A3B8'} />
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -90,8 +94,8 @@ export const LessonCard: React.FC<LessonCardProps> = ({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.navBtn} onPress={onNextLesson} disabled={lesson.id === totalLessons}>
-          <Ionicons name="chevron-forward" size={20} color={lesson.id === totalLessons ? '#475569' : '#94A3B8'} />
+        <TouchableOpacity style={styles.navBtn} onPress={onNextLesson} disabled={isLast}>
+          <Ionicons name="chevron-forward" size={20} color={isLast ? '#475569' : '#94A3B8'} />
         </TouchableOpacity>
       </View>
     </GlassCard>

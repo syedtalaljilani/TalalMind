@@ -1,4 +1,3 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   UserSettings,
   PrayerTimings,
@@ -10,11 +9,9 @@ import {
   FocusSession,
   GamificationState,
   ProductivityState,
-  AppBlockerSettings,
   HabitState,
 } from "../types";
-import { DEFAULT_GAMIFICATION } from "./achievementService";
-
+import { DataStore } from "./dataStore";
 const SETTINGS_KEY = "@daily_planner_settings_v1";
 const PRAYER_CACHE_KEY_PREFIX = "@daily_planner_prayer_";
 const LESSON_PROGRESS_KEY = "@daily_planner_lessons_v1";
@@ -23,7 +20,16 @@ const PRAYER_HISTORY_KEY = "@daily_planner_prayer_history_v1";
 const FOCUS_HISTORY_KEY = "@daily_planner_focus_history_v1";
 const GAMIFICATION_KEY = "@daily_planner_gamification_v1";
 const PRODUCTIVITY_KEY = "@daily_planner_productivity_v1";
-const APP_BLOCKER_KEY = "@daily_planner_app_blocker_v1";
+
+const CORE_KEYS = [
+  SETTINGS_KEY,
+  LESSON_PROGRESS_KEY,
+  CHECKLIST_KEY,
+  PRAYER_HISTORY_KEY,
+  FOCUS_HISTORY_KEY,
+  GAMIFICATION_KEY,
+  PRODUCTIVITY_KEY,
+];
 
 export const DEFAULT_SETTINGS: UserSettings = {
   officeStart: "09:00",
@@ -32,9 +38,19 @@ export const DEFAULT_SETTINGS: UserSettings = {
   gymStart: "06:15",
   sleepStart: "22:30",
   cityName: "Auto GPS",
-  latitude: 24.8607,
-  longitude: 67.0011,
+  latitude: null,
+  longitude: null,
   lastUpdated: new Date().toISOString(),
+};
+
+export const DEFAULT_GAMIFICATION: GamificationState = {
+  totalXP: 0,
+  level: 1,
+  unlockedAchievements: [],
+  categoryStats: {},
+  dailyStreak: 0,
+  bestDailyStreak: 0,
+  lastActiveDate: null,
 };
 
 export const DEFAULT_LESSON_PROGRESS: LessonProgress = {
@@ -135,23 +151,6 @@ export const DEFAULT_HABITS: HabitState[] = [
   },
 ];
 
-export const DEFAULT_APP_BLOCKER: AppBlockerSettings = {
-  enabled: true,
-  blockDuringFocus: true,
-  iosSelectionData: "",
-  androidBlockedPackages: [
-    "com.instagram.android",
-    "com.google.android.youtube",
-    "com.facebook.katana",
-    "com.snapchat.android",
-    "com.disney.disneyplus",
-    "com.netflix.mediaclient",
-    "com.twitter.android",
-    "com.reddit.frontpage",
-    "com.whatsapp",
-  ],
-};
-
 export const getTodayDateString = (): string => {
   const d = new Date();
   const year = d.getFullYear();
@@ -161,96 +160,69 @@ export const getTodayDateString = (): string => {
 };
 
 export const StorageService = {
+  async init(): Promise<void> {
+    await DataStore.init(CORE_KEYS);
+  },
+
+  subscribe(fn: (key: string) => void): () => void {
+    return DataStore.subscribe(fn);
+  },
+
   // Settings
   async getSettings(): Promise<UserSettings> {
-    try {
-      const json = await AsyncStorage.getItem(SETTINGS_KEY);
-      return json
-        ? { ...DEFAULT_SETTINGS, ...JSON.parse(json) }
-        : DEFAULT_SETTINGS;
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
+    const stored = await DataStore.get(SETTINGS_KEY);
+    return stored ? { ...DEFAULT_SETTINGS, ...stored } : DEFAULT_SETTINGS;
   },
 
   async saveSettings(settings: UserSettings): Promise<void> {
-    try {
-      await AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (e) {
-      console.error("Failed to save settings", e);
-    }
+    await DataStore.set(SETTINGS_KEY, settings);
   },
 
   // Prayer cache
   async getCachedPrayerTimes(dateStr: string): Promise<PrayerTimings | null> {
-    try {
-      const json = await AsyncStorage.getItem(
-        PRAYER_CACHE_KEY_PREFIX + dateStr,
-      );
-      return json ? JSON.parse(json) : null;
-    } catch {
-      return null;
-    }
+    const stored = await DataStore.get(PRAYER_CACHE_KEY_PREFIX + dateStr);
+    return stored ?? null;
   },
 
   async savePrayerTimes(
     dateStr: string,
     timings: PrayerTimings,
   ): Promise<void> {
-    try {
-      await AsyncStorage.setItem(
-        PRAYER_CACHE_KEY_PREFIX + dateStr,
-        JSON.stringify(timings),
-      );
-    } catch (e) {
-      console.error("Failed to save prayer cache", e);
-    }
+    await DataStore.set(PRAYER_CACHE_KEY_PREFIX + dateStr, timings);
   },
 
   // Lesson Progress
   async getLessonProgress(): Promise<LessonProgress> {
-    try {
-      const json = await AsyncStorage.getItem(LESSON_PROGRESS_KEY);
-      return json ? JSON.parse(json) : DEFAULT_LESSON_PROGRESS;
-    } catch {
-      return DEFAULT_LESSON_PROGRESS;
-    }
+    const stored = await DataStore.get(LESSON_PROGRESS_KEY);
+    return stored ?? DEFAULT_LESSON_PROGRESS;
   },
 
   async saveLessonProgress(progress: LessonProgress): Promise<void> {
-    try {
-      await AsyncStorage.setItem(LESSON_PROGRESS_KEY, JSON.stringify(progress));
-    } catch (e) {
-      console.error("Failed to save lesson progress", e);
-    }
+    await DataStore.set(LESSON_PROGRESS_KEY, progress);
   },
 
   // Checklists (with automatic daily reset at midnight)
   async getDailyChecklists(): Promise<DailyChecklistState> {
     const today = getTodayDateString();
-    try {
-      const json = await AsyncStorage.getItem(CHECKLIST_KEY);
-      if (json) {
-        const state: DailyChecklistState = JSON.parse(json);
-        if (state.date !== today) {
-          const resetState: DailyChecklistState = {
-            date: today,
-            officeTasks: state.officeTasks.map((t) => ({
-              ...t,
-              completed: false,
-            })),
-            shipathonTasks: state.shipathonTasks.map((t) => ({
-              ...t,
-              completed: false,
-            })),
-          };
-          await StorageService.saveDailyChecklists(resetState);
-          return resetState;
-        }
-        return state;
+    const stored = await DataStore.get(CHECKLIST_KEY);
+    if (stored) {
+      const state: DailyChecklistState = stored;
+      if (state.date !== today) {
+        const resetState: DailyChecklistState = {
+          date: today,
+          officeTasks: state.officeTasks.map((t) => ({
+            ...t,
+            completed: false,
+          })),
+          shipathonTasks: state.shipathonTasks.map((t) => ({
+            ...t,
+            completed: false,
+          })),
+        };
+        await StorageService.saveDailyChecklists(resetState);
+        return resetState;
       }
-    } catch (e) {
-      console.error("Error fetching checklists", e);
+      return state;
     }
 
     const newState: DailyChecklistState = {
@@ -263,24 +235,15 @@ export const StorageService = {
   },
 
   async saveDailyChecklists(state: DailyChecklistState): Promise<void> {
-    try {
-      await AsyncStorage.setItem(CHECKLIST_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to save checklists", e);
-    }
+    await DataStore.set(CHECKLIST_KEY, state);
   },
 
   // Prayer History & Daily Streak Checkbook
   async getPrayerHistory(): Promise<PrayerHistoryState> {
-    try {
-      const json = await AsyncStorage.getItem(PRAYER_HISTORY_KEY);
-      if (json) {
-        return JSON.parse(json);
-      }
-    } catch (e) {
-      console.error("Error fetching prayer history", e);
+    const stored = await DataStore.get(PRAYER_HISTORY_KEY);
+    if (stored) {
+      return stored;
     }
-
     const defaultState: PrayerHistoryState = {
       records: {},
       currentStreak: 0,
@@ -290,11 +253,7 @@ export const StorageService = {
   },
 
   async savePrayerHistory(state: PrayerHistoryState): Promise<void> {
-    try {
-      await AsyncStorage.setItem(PRAYER_HISTORY_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to save prayer history", e);
-    }
+    await DataStore.set(PRAYER_HISTORY_KEY, state);
   },
 
   async togglePrayerCheck(
@@ -349,76 +308,57 @@ export const StorageService = {
 
   // Focus Session History
   async getFocusHistory(): Promise<FocusSession[]> {
-    try {
-      const json = await AsyncStorage.getItem(FOCUS_HISTORY_KEY);
-      return json ? JSON.parse(json) : [];
-    } catch {
-      return [];
-    }
+    const stored = await DataStore.get(FOCUS_HISTORY_KEY);
+    return Array.isArray(stored) ? stored : [];
   },
 
   async saveFocusSession(session: FocusSession): Promise<void> {
-    try {
-      const existing = await StorageService.getFocusHistory();
-      const updated = [session, ...existing].slice(0, 500);
-      await AsyncStorage.setItem(FOCUS_HISTORY_KEY, JSON.stringify(updated));
-    } catch (e) {
-      console.error("Failed to save focus session", e);
-    }
+    const existing = await StorageService.getFocusHistory();
+    const updated = [session, ...existing].slice(0, 500);
+    await DataStore.set(FOCUS_HISTORY_KEY, updated);
   },
 
   // Gamification
   async getGamification(): Promise<GamificationState> {
-    try {
-      const json = await AsyncStorage.getItem(GAMIFICATION_KEY);
-      return json
-        ? { ...DEFAULT_GAMIFICATION, ...JSON.parse(json) }
-        : DEFAULT_GAMIFICATION;
-    } catch {
-      return DEFAULT_GAMIFICATION;
-    }
+    const stored = await DataStore.get(GAMIFICATION_KEY);
+    return stored
+      ? { ...DEFAULT_GAMIFICATION, ...stored }
+      : DEFAULT_GAMIFICATION;
   },
 
   async saveGamification(state: GamificationState): Promise<void> {
-    try {
-      await AsyncStorage.setItem(GAMIFICATION_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to save gamification", e);
-    }
+    await DataStore.set(GAMIFICATION_KEY, state);
   },
 
   // Productivity (habits, quick tasks, pomodoro)
   async getProductivityState(): Promise<ProductivityState> {
     const today = getTodayDateString();
-    try {
-      const json = await AsyncStorage.getItem(PRODUCTIVITY_KEY);
-      if (json) {
-        const state: ProductivityState = JSON.parse(json);
-        if (state.date !== today) {
-          const resetHabits = state.habits.map((h) => {
-            const yesterday = new Date();
-            yesterday.setDate(yesterday.getDate() - 1);
-            const yesterdayStr = yesterday.toISOString().split("T")[0];
-            const keepStreak = h.lastCompletedDate === yesterdayStr;
-            return {
-              ...h,
-              completedToday: false,
-              streak: keepStreak ? h.streak : 0,
-            };
-          });
-          const resetState: ProductivityState = {
-            date: today,
-            habits: resetHabits,
-            pomodoroCount: 0,
-            quickTasks: [],
+    const stored = await DataStore.get(PRODUCTIVITY_KEY);
+    if (stored) {
+      const state: ProductivityState = stored;
+      if (state.date !== today) {
+        const resetHabits = state.habits.map((h) => {
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split("T")[0];
+          const keepStreak = h.lastCompletedDate === yesterdayStr;
+          return {
+            ...h,
+            completedToday: false,
+            streak: keepStreak ? h.streak : 0,
           };
-          await StorageService.saveProductivityState(resetState);
-          return resetState;
-        }
-        return state;
+        });
+        const resetState: ProductivityState = {
+          date: today,
+          habits: resetHabits,
+          pomodoroCount: 0,
+          quickTasks: [],
+          waterMl: 0,
+        };
+        await StorageService.saveProductivityState(resetState);
+        return resetState;
       }
-    } catch (e) {
-      console.error("Error fetching productivity state", e);
+      return { ...state, waterMl: state.waterMl ?? 0 };
     }
 
     const newState: ProductivityState = {
@@ -426,36 +366,26 @@ export const StorageService = {
       habits: DEFAULT_HABITS,
       pomodoroCount: 0,
       quickTasks: [],
+      waterMl: 0,
     };
     await StorageService.saveProductivityState(newState);
     return newState;
   },
 
   async saveProductivityState(state: ProductivityState): Promise<void> {
-    try {
-      await AsyncStorage.setItem(PRODUCTIVITY_KEY, JSON.stringify(state));
-    } catch (e) {
-      console.error("Failed to save productivity state", e);
-    }
+    await DataStore.set(PRODUCTIVITY_KEY, state);
   },
 
-  // App Blocker Settings
-  async getAppBlockerSettings(): Promise<AppBlockerSettings> {
-    try {
-      const json = await AsyncStorage.getItem(APP_BLOCKER_KEY);
-      return json
-        ? { ...DEFAULT_APP_BLOCKER, ...JSON.parse(json) }
-        : DEFAULT_APP_BLOCKER;
-    } catch {
-      return DEFAULT_APP_BLOCKER;
-    }
+  // Water tracking
+  async getWaterToday(): Promise<number> {
+    const state = await StorageService.getProductivityState();
+    return state.waterMl ?? 0;
   },
 
-  async saveAppBlockerSettings(settings: AppBlockerSettings): Promise<void> {
-    try {
-      await AsyncStorage.setItem(APP_BLOCKER_KEY, JSON.stringify(settings));
-    } catch (e) {
-      console.error("Failed to save app blocker settings", e);
-    }
+  async logWaterToday(amountMl: number): Promise<number> {
+    const state = await StorageService.getProductivityState();
+    const waterMl = (state.waterMl ?? 0) + amountMl;
+    await StorageService.saveProductivityState({ ...state, waterMl });
+    return waterMl;
   },
 };

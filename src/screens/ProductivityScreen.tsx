@@ -28,6 +28,10 @@ interface QuickTask {
 
 const WORK_MINS = 25 * 60;
 const BREAK_MINS = 5 * 60;
+const WATER_GOAL_ML = 2000;
+const GLASS_ML = 250;
+const HALF_GLASS_ML = 125;
+const SIP_ML = 50;
 
 export const ProductivityScreen: React.FC = () => {
   const [secondsLeft, setSecondsLeft] = useState(WORK_MINS);
@@ -42,6 +46,7 @@ export const ProductivityScreen: React.FC = () => {
   const [gamification, setGamification] = useState<GamificationState | null>(
     null,
   );
+  const [waterToday, setWaterToday] = useState(0);
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -55,10 +60,19 @@ export const ProductivityScreen: React.FC = () => {
       setFocusHistory(history);
       setGamification(game);
       setPomCount(prod.pomodoroCount);
+      setWaterToday(prod.waterMl ?? 0);
     };
 
     loadData();
   }, []);
+
+  const logWater = async (amountMl: number) => {
+    const total = await StorageService.logWaterToday(amountMl);
+    setWaterToday(total);
+    setProductivity((curr) =>
+      curr ? { ...curr, waterMl: total } : curr,
+    );
+  };
 
   useEffect(() => {
     if (running) {
@@ -222,6 +236,7 @@ export const ProductivityScreen: React.FC = () => {
       ((completedHabits + doneTasks + Math.min(pomCount, 4)) / 10) * 100,
     ),
   );
+  const waterPct = Math.min(100, Math.round((waterToday / WATER_GOAL_ML) * 100));
 
   if (!productivity || !gamification) {
     return (
@@ -273,6 +288,57 @@ export const ProductivityScreen: React.FC = () => {
           >
             <Ionicons name="stop-circle-outline" size={22} color="#FFF" />
             <Text style={styles.timerBtnText}>Reset</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassCard>
+
+      <GlassCard accentColor="#38BDF8" style={styles.card}>
+        <View style={styles.cardHeader}>
+          <Ionicons name="water-outline" size={20} color="#38BDF8" />
+          <Text style={styles.cardTitle}>Water Intake Today</Text>
+          <View style={[styles.badge, { backgroundColor: "#38BDF822" }]}>
+            <Text style={[styles.badgeText, { color: "#38BDF8" }]}>
+              {waterToday} / {WATER_GOAL_ML} ml
+            </Text>
+          </View>
+        </View>
+        <View style={styles.waterProgressBg}>
+          <View
+            style={[
+              styles.waterProgressFill,
+              { width: `${waterPct}%` as `${number}%` },
+            ]}
+          />
+        </View>
+        <Text style={styles.waterHint}>
+          {waterPct >= 100
+            ? "Daily goal reached — keep it up! 💧"
+            : `${WATER_GOAL_ML - waterToday} ml to go`}
+        </Text>
+        <View style={styles.waterActions}>
+          <TouchableOpacity
+            style={styles.waterBtn}
+            onPress={() => logWater(SIP_ML)}
+          >
+            <Ionicons name="water" size={16} color="#38BDF8" />
+            <Text style={styles.waterBtnText}>Sip</Text>
+            <Text style={styles.waterBtnSub}>{SIP_ML}ml</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.waterBtn}
+            onPress={() => logWater(HALF_GLASS_ML)}
+          >
+            <Ionicons name="water" size={16} color="#38BDF8" />
+            <Text style={styles.waterBtnText}>Half Glass</Text>
+            <Text style={styles.waterBtnSub}>{HALF_GLASS_ML}ml</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.waterBtn}
+            onPress={() => logWater(GLASS_ML)}
+          >
+            <Ionicons name="water" size={16} color="#38BDF8" />
+            <Text style={styles.waterBtnText}>Glass</Text>
+            <Text style={styles.waterBtnSub}>{GLASS_ML}ml</Text>
           </TouchableOpacity>
         </View>
       </GlassCard>
@@ -559,6 +625,36 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   timerBtnText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  waterProgressBg: {
+    height: 8,
+    backgroundColor: "#1E2030",
+    borderRadius: 4,
+    overflow: "hidden",
+  },
+  waterProgressFill: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#38BDF8",
+  },
+  waterHint: { color: "#64748B", fontSize: 11, marginTop: 4 },
+  waterActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 12,
+  },
+  waterBtn: {
+    flex: 1,
+    alignItems: "center",
+    gap: 2,
+    backgroundColor: "#11121C",
+    borderRadius: 12,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: "rgba(56, 189, 248, 0.2)",
+  },
+  waterBtnText: { color: "#F8FAFC", fontSize: 12, fontWeight: "700" },
+  waterBtnSub: { color: "#38BDF8", fontSize: 10 },
   habitRow: {
     flexDirection: "row",
     alignItems: "center",

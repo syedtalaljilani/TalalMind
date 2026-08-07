@@ -7,6 +7,7 @@
 ## 📱 Screenshots & Features
 
 ### 🗓 Timeline Screen
+
 - Auto-generated **8-hour daily schedule** with:
   - 🏋️ Morning Gym (06:15 AM – 07:30 AM)
   - 🚗 Commute to Office (50 min)
@@ -24,6 +25,7 @@
 - **🔥 Prayer Streak** badge in header (tap to open 30-day checkbook)
 
 ### ⏱ Focus Timer (per Work Block)
+
 - Tap the **▶ Focus** button on any work card (Gym, Office, Shipathon, Learning)
 - Full-screen **Pomodoro Timer** (25-min work / 5-min break) inside a bottom sheet
 - Tracks:
@@ -34,6 +36,7 @@
 - **📈 Focus History** button in header shows past sessions grouped by date
 
 ### 📚 503 AI Engineering Lessons
+
 - All **503 official lessons** scraped from [aiengineeringfromscratch.com](https://aiengineeringfromscratch.com)
 - Organized into **20 Phase Accordions**
 - Per-phase completion progress bar
@@ -41,28 +44,33 @@
 - Lesson streak tracker 🔥
 
 ### ✅ Daily Checklists
+
 - Office tasks & Ship-a-thon tasks
 - **Auto-reset at midnight** every day
 - Persistent across app restarts
 
 ### 🕌 Prayer Checkbook & Streak History
+
 - Tap any prayer card to mark it as offered
 - **30-day history modal** with date selector
 - Streak calculation: consecutive days with all 5 prayers offered
 
 ### 🚀 Productivity Hub (Boost Tab)
+
 - 🍅 **Pomodoro Timer** (25 min work / 5 min break)
 - 🔥 **Daily Habit Tracker** (Gym, Learn, Shipathon, Steps, No Social)
 - ✅ **Quick Task List** (in-session)
 - 📊 **Day Score Card** (Pomodoros | Habits | Tasks)
 
 ### 🌙 Sleep Force App Lock
+
 - Full-screen lock overlay from **10:30 PM to Fajr**
 - Live **Fajr countdown timer**
 - Emergency hold-to-unlock (2 seconds)
 - 1-Tap launcher for iOS Screen Time / Android Digital Wellbeing
 
 ### ⚙️ Settings Screen
+
 - Customize office hours, commute duration, gym time, sleep lock time
 - **GPS sync** button to refresh prayer location
 - 100% Offline & Private badge
@@ -71,15 +79,15 @@
 
 ## 🛠 Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | Expo SDK 57 / React Native 0.86 |
-| Navigation | React Navigation v7 (Bottom Tabs) |
-| Storage | AsyncStorage (local only, no cloud) |
-| Location | expo-location |
-| Prayer API | Al-Adhan API (with offline cache) |
-| Icons | @expo/vector-icons (Ionicons) |
-| Language | TypeScript |
+| Layer      | Technology                          |
+| ---------- | ----------------------------------- |
+| Framework  | Expo SDK 57 / React Native 0.86     |
+| Navigation | React Navigation v7 (Bottom Tabs)   |
+| Storage    | Supabase (shared account) + AsyncStorage offline cache |
+| Location   | expo-location                       |
+| Prayer API | Al-Adhan API (with offline cache)   |
+| Icons      | @expo/vector-icons (Ionicons)       |
+| Language   | TypeScript                          |
 
 ---
 
@@ -95,7 +103,9 @@ TalalMind/
 │   ├── data/
 │   │   └── lessons.ts               # 503 AI Engineering lessons dataset
 │   ├── services/
-│   │   ├── storageService.ts        # AsyncStorage CRUD wrapper
+│   │   ├── storageService.ts        # Data access layer (Supabase + cache)
+│   │   ├── dataStore.ts             # Cache-first sync engine
+│   │   ├── supabaseClient.ts        # Supabase client + email/password auth
 │   │   ├── locationService.ts       # GPS + reverse geocoding
 │   │   └── prayerService.ts         # Al-Adhan API + offline cache
 │   ├── utils/
@@ -107,8 +117,7 @@ TalalMind/
 │   │   ├── ChecklistGroup.tsx       # Daily checklist group
 │   │   ├── PrayerCheckbookModal.tsx # 30-day prayer log modal
 │   │   ├── FocusTimerModal.tsx      # Pomodoro focus timer modal
-│   │   ├── FocusHistoryModal.tsx    # Focus session history modal
-│   │   └── SleepLockOverlay.tsx     # Sleep force lock overlay
+│   │   └── FocusHistoryModal.tsx    # Focus session history modal
 │   └── screens/
 │       ├── TimelineScreen.tsx       # Main timeline screen
 │       ├── LessonsScreen.tsx        # 503 lessons grouped by phase
@@ -122,6 +131,7 @@ TalalMind/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - Node.js 18+
 - Expo Go app on your iOS/Android phone
 - npm or yarn
@@ -144,32 +154,39 @@ Scan the QR code with **Expo Go** on your phone.
 
 ---
 
-## 🔒 Privacy
+## 🔒 Privacy & Sync
 
-All data is stored **locally on your device** using AsyncStorage:
+Data is synced to a private Supabase project under a **single shared account** and cached locally on the device:
 
-| Data | Storage Key |
-|---|---|
-| User settings | `@daily_planner_settings_v1` |
-| Prayer times cache | `@daily_planner_prayer_<date>` |
-| Lesson progress | `@daily_planner_lessons_v1` |
-| Daily checklists | `@daily_planner_checklists_v1` |
-| Prayer history | `@daily_planner_prayer_history_v1` |
-| Focus session history | `@daily_planner_focus_history_v1` |
+| Data                  | Storage Key                        |
+| --------------------- | ---------------------------------- |
+| User settings         | `@daily_planner_settings_v1`       |
+| Prayer times cache    | `@daily_planner_prayer_<date>`     |
+| Lesson progress       | `@daily_planner_lessons_v1`        |
+| Daily checklists      | `@daily_planner_checklists_v1`     |
+| Prayer history        | `@daily_planner_prayer_history_v1` |
+| Focus session history | `@daily_planner_focus_history_v1`  |
 
-**No accounts. No tracking. No servers.**
+**Setup:** copy `.env.example` to `.env` and fill in your Supabase URL + anon key, plus a
+login account (`EXPO_PUBLIC_SUPABASE_EMAIL` / `EXPO_PUBLIC_SUPABASE_PASSWORD`):
+
+1. Create the account once in the Supabase dashboard: **Authentication → Add user**
+   (email + password).
+2. Run `supabase/migrations/0001_init.sql` in your project's SQL editor.
+
+**No tracking. No public sign-ups. The local cache means the app still works offline.**
 
 ---
 
 ## 📋 Bottom Navigation Tabs
 
-| Tab | Icon | Screen |
-|---|---|---|
-| Timeline | ⏰ | Daily 8-hour schedule + prayers |
-| Boost | ⌛ | Productivity hub (Pomodoro, habits, tasks) |
-| Lessons | 📖 | 503 AI Engineering lessons by phase |
-| Tasks | ☑️ | Office & ship-a-thon checklists |
-| Settings | ⚙️ | App configuration & GPS sync |
+| Tab      | Icon | Screen                                     |
+| -------- | ---- | ------------------------------------------ |
+| Timeline | ⏰   | Daily 8-hour schedule + prayers            |
+| Boost    | ⌛   | Productivity hub (Pomodoro, habits, tasks) |
+| Lessons  | 📖   | 503 AI Engineering lessons by phase        |
+| Tasks    | ☑️   | Office & ship-a-thon checklists            |
+| Settings | ⚙️   | App configuration & GPS sync               |
 
 ---
 

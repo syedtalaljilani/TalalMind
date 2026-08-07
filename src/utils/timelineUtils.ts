@@ -252,21 +252,38 @@ export const generateDailyTimeline = (
     badgeText: "🍽 Lunch & Rest (1.5h)",
   });
 
-  // Slot 4: AI Engineering Learning Slot (2 Hours: 02:30 PM - 04:30 PM)
+  // Slot 4: AI Engineering Study (1 Hour: 02:30 PM - 03:30 PM)
   const slot4Start = slot3End;
-  const slot4End = slot4Start + 120;
+  const slot4End = slot4Start + 60;
   items.push({
     id: "office-learning-slot",
-    title: "AI Engineering Study Slot",
-    subTitle: currentLessonTitle || "Read chapter & write code • 2 Hours",
+    title: "AI from Scratch Study Slot",
+    subTitle: currentLessonTitle || "AI Engineering from scratch • 1 Hour",
     startTime: minutesToTime(slot4Start),
     endTime: minutesToTime(slot4End),
     type: "learning_block",
     iconName: "book-open",
     color: "#EC4899",
-    badgeText: "📚 Learning (2h)",
+    badgeText: "📚 AI from Scratch (1h)",
     isFocusable: true,
-    allocatedMinutes: 120,
+    allocatedMinutes: 60,
+  });
+
+  // Slot 4b: FDE Roadmap Study (1 Hour: 03:30 PM - 04:30 PM)
+  const slot4bStart = slot4End;
+  const slot4bEnd = slot4bStart + 60;
+  items.push({
+    id: "fde-learning-slot",
+    title: "FDE Roadmap Study Slot",
+    subTitle: "Founding Engineer roadmap (AI + CV) • 1 Hour",
+    startTime: minutesToTime(slot4bStart),
+    endTime: minutesToTime(slot4bEnd),
+    type: "learning_block",
+    iconName: "rocket-outline",
+    color: "#38BDF8",
+    badgeText: "🚀 FDE Roadmap (1h)",
+    isFocusable: true,
+    allocatedMinutes: 60,
   });
 
   // Slot 5: Wrap-up & Buffer (30 Mins: 04:30 PM - 05:00 PM)

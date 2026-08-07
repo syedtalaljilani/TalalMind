@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { StyleSheet, Text, View, ScrollView, TouchableOpacity, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ALL_LESSONS } from '../data/lessons';
+import { FDE_LESSONS } from '../data/fdeRoadmap';
 import { Lesson, LessonProgress } from '../types';
 import { StorageService, getTodayDateString } from '../services/storageService';
 import { LessonCard } from '../components/LessonCard';
@@ -12,6 +13,41 @@ interface PhaseGroup {
   completedCount: number;
 }
 
+type CurriculumKey = 'ai' | 'fde';
+
+interface CurriculumMeta {
+  key: CurriculumKey;
+  label: string;
+  title: string;
+  icon: 'code-slash' | 'rocket';
+  color: string;
+  accent: string;
+  lessons: Lesson[];
+}
+
+const CURRICULA: CurriculumMeta[] = [
+  {
+    key: 'ai',
+    label: 'AI from Scratch',
+    title: 'AI Engineering From Scratch',
+    icon: 'code-slash',
+    color: '#EC4899',
+    accent: '#EC489922',
+    lessons: ALL_LESSONS,
+  },
+  {
+    key: 'fde',
+    label: 'FDE Roadmap',
+    title: 'Founding Engineer / FDE (AI + CV)',
+    icon: 'rocket',
+    color: '#38BDF8',
+    accent: '#38BDF822',
+    lessons: FDE_LESSONS,
+  },
+];
+
+const DAILY_MINUTES: Record<CurriculumKey, number> = { ai: 60, fde: 60 };
+
 export const LessonsScreen: React.FC = () => {
   const [progress, setProgress] = useState<LessonProgress>({
     completedIds: [],
@@ -19,22 +55,30 @@ export const LessonsScreen: React.FC = () => {
     currentStreak: 0,
     bestStreak: 0,
   });
-  const [selectedLessonIndex, setSelectedLessonIndex] = useState<number>(0);
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  const [expandedPhases, setExpandedPhases] = useState<Record<string, boolean>>({});
+  const [activeCurriculum, setActiveCurriculum] = useState<CurriculumKey>('ai');
+  const [selectedLessonIndex, setSelectedLessonIndex] = useState<Record<CurriculumKey, number>>({ ai: 0, fde: 0 });
+  const [searchQuery, setSearchQuery] = useState<Record<CurriculumKey, string>>({ ai: '', fde: '' });
+  const [expandedPhases, setExpandedPhases] = useState<Record<CurriculumKey, Record<string, boolean>>>({ ai: {}, fde: {} });
+
+  const activeLessons = CURRICULA.find((c) => c.key === activeCurriculum)!.lessons;
 
   const loadProgress = useCallback(async () => {
     const p = await StorageService.getLessonProgress();
     setProgress(p);
 
-    // Auto navigate to the first uncompleted lesson
-    const nextUncompletedIndex = ALL_LESSONS.findIndex((l) => !p.completedIds.includes(l.id));
-    if (nextUncompletedIndex !== -1) {
-      setSelectedLessonIndex(nextUncompletedIndex);
-      // Auto expand the phase containing the current uncompleted lesson
-      const activePhase = ALL_LESSONS[nextUncompletedIndex].module;
-      setExpandedPhases((prev) => ({ ...prev, [activePhase]: true }));
-    }
+    CURRICULA.forEach((c) => {
+      // Auto navigate to the first uncompleted lesson of each curriculum
+      const nextUncompletedIndex = c.lessons.findIndex((l) => !p.completedIds.includes(l.id));
+      if (nextUncompletedIndex !== -1) {
+        setSelectedLessonIndex((prev) => ({ ...prev, [c.key]: nextUncompletedIndex }));
+        // Auto expand the phase containing the current uncompleted lesson
+        const activePhase = c.lessons[nextUncompletedIndex].module;
+        setExpandedPhases((prev) => ({
+          ...prev,
+          [c.key]: { ...prev[c.key], [activePhase]: true },
+        }));
+      }
+    });
   }, []);
 
   useEffect(() => {
@@ -89,15 +133,18 @@ export const LessonsScreen: React.FC = () => {
   const togglePhaseExpand = (phaseName: string) => {
     setExpandedPhases((prev) => ({
       ...prev,
-      [phaseName]: !prev[phaseName],
+      [activeCurriculum]: {
+        ...prev[activeCurriculum],
+        [phaseName]: !prev[activeCurriculum]?.[phaseName],
+      },
     }));
   };
 
   // Group lessons by phase module
   const phaseGroups: PhaseGroup[] = useMemo(() => {
     const map: Record<string, Lesson[]> = {};
-    ALL_LESSONS.forEach((lesson) => {
-      const q = searchQuery.toLowerCase().trim();
+    const q = searchQuery[activeCurriculum].toLowerCase().trim();
+    activeLessons.forEach((lesson) => {
       const matchesSearch =
         !q ||
         lesson.title.toLowerCase().includes(q) ||
@@ -121,35 +168,85 @@ export const LessonsScreen: React.FC = () => {
         completedCount,
       };
     });
-  }, [searchQuery, progress.completedIds]);
+  }, [searchQuery, activeCurriculum, activeLessons, progress.completedIds]);
 
   const toggleExpandAll = (expand: boolean) => {
     const state: Record<string, boolean> = {};
     phaseGroups.forEach((pg) => {
       state[pg.name] = expand;
     });
-    setExpandedPhases(state);
+    setExpandedPhases((prev) => ({ ...prev, [activeCurriculum]: state }));
   };
 
-  const currentLesson = ALL_LESSONS[selectedLessonIndex] || ALL_LESSONS[0];
+  const currentLesson = activeLessons[selectedLessonIndex[activeCurriculum]] || activeLessons[0];
+  const curriculumProgress = progress.completedIds.filter((id) =>
+    activeLessons.some((l) => l.id === id),
+  ).length;
+  const overallPct = Math.round((curriculumProgress / activeLessons.length) * 100);
+  const activeMeta = CURRICULA.find((c) => c.key === activeCurriculum)!;
 
   return (
     <View style={styles.container}>
       {/* Screen Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>AI Engineering From Scratch</Text>
-        <Text style={styles.subtitle}>503 Lessons • 20 Phases Grouped Curriculum</Text>
+        <Text style={styles.title}>Learning Center</Text>
+        <Text style={styles.subtitle}>Two tracks • 1 hr each daily</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Curriculum Cards */}
+        <View style={styles.tabRow}>
+          {CURRICULA.map((curriculum) => {
+            const isActive = curriculum.key === activeCurriculum;
+            const doneCount = progress.completedIds.filter((id) =>
+              curriculum.lessons.some((l) => l.id === id),
+            ).length;
+            const pct = Math.round((doneCount / curriculum.lessons.length) * 100);
+
+            return (
+              <TouchableOpacity
+                key={curriculum.key}
+                style={[
+                  styles.tabCard,
+                  isActive && { borderColor: curriculum.color, backgroundColor: curriculum.accent },
+                ]}
+                onPress={() => setActiveCurriculum(curriculum.key)}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.tabIconWrap, { backgroundColor: curriculum.accent }]}>
+                  <Ionicons name={curriculum.icon} size={20} color={curriculum.color} />
+                </View>
+                <Text style={[styles.tabLabel, isActive && { color: curriculum.color }]}>
+                  {curriculum.label}
+                </Text>
+                <Text style={styles.tabMeta}>
+                  {doneCount}/{curriculum.lessons.length} • {pct}%
+                </Text>
+                <Text style={styles.tabDaily}>{DAILY_MINUTES[curriculum.key]} min daily</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         {/* Main Focus Lesson Card */}
         <LessonCard
           lesson={currentLesson}
-          progress={progress}
-          totalLessons={ALL_LESSONS.length}
+          progress={{ ...progress, completedIds: progress.completedIds.filter((id) => activeLessons.some((l) => l.id === id)) }}
+          totalLessons={activeLessons.length}
+          index={selectedLessonIndex[activeCurriculum]}
           onToggleComplete={handleToggleComplete}
-          onPrevLesson={() => setSelectedLessonIndex(Math.max(0, selectedLessonIndex - 1))}
-          onNextLesson={() => setSelectedLessonIndex(Math.min(ALL_LESSONS.length - 1, selectedLessonIndex + 1))}
+          onPrevLesson={() =>
+            setSelectedLessonIndex((prev) => ({
+              ...prev,
+              [activeCurriculum]: Math.max(0, prev[activeCurriculum] - 1),
+            }))
+          }
+          onNextLesson={() =>
+            setSelectedLessonIndex((prev) => ({
+              ...prev,
+              [activeCurriculum]: Math.min(activeLessons.length - 1, prev[activeCurriculum] + 1),
+            }))
+          }
         />
 
         {/* Grouped Catalog Section */}
@@ -173,13 +270,17 @@ export const LessonsScreen: React.FC = () => {
             <Ionicons name="search" size={18} color="#64748B" />
             <TextInput
               style={styles.searchInput}
-              placeholder="Filter 503 lessons by title, phase, or #..."
+              placeholder={`Filter ${activeLessons.length} lessons by title, phase, or #...`}
               placeholderTextColor="#64748B"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              value={searchQuery[activeCurriculum]}
+              onChangeText={(text) =>
+                setSearchQuery((prev) => ({ ...prev, [activeCurriculum]: text }))
+              }
             />
-            {searchQuery !== '' && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
+            {searchQuery[activeCurriculum] !== '' && (
+              <TouchableOpacity
+                onPress={() => setSearchQuery((prev) => ({ ...prev, [activeCurriculum]: '' }))}
+              >
                 <Ionicons name="close-circle" size={18} color="#64748B" />
               </TouchableOpacity>
             )}
@@ -187,7 +288,7 @@ export const LessonsScreen: React.FC = () => {
 
           {/* Render Phase Groups */}
           {phaseGroups.map((group) => {
-            const isExpanded = expandedPhases[group.name] || searchQuery !== '';
+            const isExpanded = expandedPhases[activeCurriculum]?.[group.name] || searchQuery[activeCurriculum] !== '';
             const allGroupDone = group.completedCount === group.lessons.length && group.lessons.length > 0;
 
             return (
@@ -202,7 +303,7 @@ export const LessonsScreen: React.FC = () => {
                     <Ionicons
                       name={allGroupDone ? 'checkmark-done-circle' : 'folder-open-outline'}
                       size={20}
-                      color={allGroupDone ? '#10B981' : '#EC4899'}
+                      color={allGroupDone ? '#10B981' : activeMeta.color}
                     />
                     <Text style={styles.phaseNameText}>{group.name}</Text>
                   </View>
@@ -227,7 +328,7 @@ export const LessonsScreen: React.FC = () => {
                     {group.lessons.map((lesson) => {
                       const done = progress.completedIds.includes(lesson.id);
                       const isSelected = lesson.id === currentLesson.id;
-                      const globalIdx = ALL_LESSONS.findIndex((l) => l.id === lesson.id);
+                      const globalIdx = activeLessons.findIndex((l) => l.id === lesson.id);
 
                       return (
                         <TouchableOpacity
@@ -236,7 +337,9 @@ export const LessonsScreen: React.FC = () => {
                             styles.lessonItemRow,
                             isSelected && styles.selectedItemRow,
                           ]}
-                          onPress={() => setSelectedLessonIndex(globalIdx)}
+                          onPress={() =>
+                            setSelectedLessonIndex((prev) => ({ ...prev, [activeCurriculum]: globalIdx }))
+                          }
                           activeOpacity={0.7}
                         >
                           <TouchableOpacity
@@ -255,7 +358,7 @@ export const LessonsScreen: React.FC = () => {
                               style={[
                                 styles.lessonItemTitle,
                                 done && styles.lessonItemTitleDone,
-                                isSelected && { color: '#EC4899', fontWeight: '700' },
+                                isSelected && { color: activeMeta.color, fontWeight: '700' },
                               ]}
                             >
                               {lesson.title}
@@ -308,7 +411,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   subtitle: {
-    color: '#EC4899',
+    color: '#38BDF8',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 2,
@@ -317,6 +420,42 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 40,
+  },
+  tabRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  tabCard: {
+    flex: 1,
+    backgroundColor: '#161824',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#26293D',
+    padding: 14,
+    gap: 6,
+  },
+  tabIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  tabLabel: {
+    color: '#F8FAFC',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  tabMeta: {
+    color: '#64748B',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  tabDaily: {
+    color: '#10B981',
+    fontSize: 11,
+    fontWeight: '700',
   },
   catalogSection: {
     marginTop: 20,

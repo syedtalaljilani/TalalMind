@@ -183,11 +183,5 @@ export interface ProductivityState {
   habits: HabitState[];
   pomodoroCount: number;
   quickTasks: { id: string; title: string; done: boolean }[];
-}
-
-export interface AppBlockerSettings {
-  enabled: boolean;
-  blockDuringFocus: boolean;
-  iosSelectionData: string;
-  androidBlockedPackages: string[];
+  waterMl: number;
 }

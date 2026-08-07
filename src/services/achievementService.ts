@@ -4,22 +4,13 @@ import {
 } from '../types';
 import { ACHIEVEMENTS, XP_PER_POMODORO, XP_PER_FOCUS_MINUTE, XP_BONUS_FULL_UTILIZATION, getLevelFromXP } from '../data/achievements';
 import { StorageService, getTodayDateString } from './storageService';
+export { DEFAULT_GAMIFICATION } from './storageService';
 
 const DEFAULT_CATEGORY_STATS: CategoryStats = {
   totalSessions: 0,
   totalMinutes: 0,
   totalPomodoros: 0,
   bestUtilizationPct: 0,
-};
-
-export const DEFAULT_GAMIFICATION: GamificationState = {
-  totalXP: 0,
-  level: 1,
-  unlockedAchievements: [],
-  categoryStats: {},
-  dailyStreak: 0,
-  bestDailyStreak: 0,
-  lastActiveDate: null,
 };
 
 const getMetricValue = (

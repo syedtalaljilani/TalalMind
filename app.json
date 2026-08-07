@@ -7,17 +7,6 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "scheme": "talalmind",
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.talalmind.app",
-      "appleTeamId": "YOUR_TEAM_ID",
-      "entitlements": {
-        "com.apple.developer.family-controls": true,
-        "com.apple.security.application-groups": [
-          "group.com.talalmind.blocker"
-        ]
-      }
-    },
     "android": {
       "package": "com.talalmind.app",
       "adaptiveIcon": {
@@ -31,28 +20,6 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      [
-        "expo-app-blocker",
-        {
-          "ios": {
-            "appGroup": "group.com.talalmind.blocker",
-            "shield": {
-              "title": "Focus Mode Active!",
-              "subtitle": "{appName} is blocked during your focus session.",
-              "primaryButtonLabel": "Back to TalalMind",
-              "primaryButtonColor": "#6366F1",
-              "backgroundColor": "#090A0F",
-              "backgroundBlurStyle": "systemThickMaterialDark"
-            }
-          },
-          "android": {
-            "notificationTitle": "TalalMind Focus",
-            "notificationText": "{appName} is blocked. Stay focused!"
-          }
-        }
-      ]
-    ],
     "extra": {
       "eas": {
         "build": {
@@ -60,28 +27,28 @@
             "ios": {
               "appExtensions": [
                 {
-                  "bundleIdentifier": "com.talalmind.app.ShieldConfiguration",
-                  "targetName": "ShieldConfiguration",
-                  "entitlements": {
-                    "com.apple.developer.family-controls": true,
-                    "com.apple.security.application-groups": [
-                      "group.com.talalmind.blocker"
-                    ]
-                  }
-                },
-                {
-                  "bundleIdentifier": "com.talalmind.app.ShieldAction",
-                  "targetName": "ShieldAction",
-                  "entitlements": {
-                    "com.apple.developer.family-controls": true,
-                    "com.apple.security.application-groups": [
-                      "group.com.talalmind.blocker"
-                    ]
-                  }
-                },
-                {
-                  "bundleIdentifier": "com.talalmind.app.DeviceActivityMonitor",
                   "targetName": "DeviceActivityMonitor",
+                  "bundleIdentifier": "com.talalmind.app.DeviceActivityMonitor",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.talalmind.blocker"
+                    ]
+                  }
+                },
+                {
+                  "targetName": "ShieldAction",
+                  "bundleIdentifier": "com.talalmind.app.ShieldAction",
+                  "entitlements": {
+                    "com.apple.developer.family-controls": true,
+                    "com.apple.security.application-groups": [
+                      "group.com.talalmind.blocker"
+                    ]
+                  }
+                },
+                {
+                  "targetName": "ShieldConfiguration",
+                  "bundleIdentifier": "com.talalmind.app.ShieldConfiguration",
                   "entitlements": {
                     "com.apple.developer.family-controls": true,
                     "com.apple.security.application-groups": [
@@ -95,6 +62,27 @@
         },
         "projectId": "bc68844e-dd15-471f-9230-aad8f2d9d2a8"
       }
-    }
+    },
+    "plugins": [
+      [
+        "expo-app-blocker",
+        {
+          "ios": {
+            "appGroup": "group.com.talalmind.blocker",
+            "shield": {
+              "title": "Stay Focused",
+              "subtitle": "{appName} is blocked during focus time.",
+              "primaryButtonLabel": "Back to Focus",
+              "primaryButtonColor": "#6366F1",
+              "titleColor": "#F8FAFC",
+              "subtitleColor": "#94A3B8",
+              "backgroundColor": "#0F1424",
+              "countSuffix": " You have {count} apps blocked."
+            }
+          }
+        }
+      ],
+      "expo-background-task"
+    ]
   }
 }
